@@ -7,15 +7,35 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(AIU_grpc)
 
 # include(../cmake/common.cmake)
-add_subdirectory(/aivol/grpc/ ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
-set(_PROTOBUF_LIBPROTOBUF libprotobuf)
+# Provide grpc installation directory
+if(DEFINED GRPC_DIR)
+  message(STATUS "GPRC_DIR: ${GRPC_DIR}")
+else()
+  message(FATAL_ERROR "Provide GPRC_DIR pls:${GRPC_DIR}")
+endif()
+if(DEFINED ONNX_COMPILER_BUILD_DIR)
+  message(STATUS "ONNX_COMPILER_BUILD_DIR: ${ONNX_COMPILER_BUILD_DIR}")
+else()
+  message(FATAL_ERROR "Provide ONNX_COMPILER_BUILD_DIR pls:${ONNX_COMPILER_BUILD_DIR}")
+endif()
+if(DEFINED LOADGEN_DIR)
+  message(STATUS "LOADGEN_DIR: ${LOADGEN_DIR}")
+else()
+  message(FATAL_ERROR "Provide LOADGEN_DIR pls:${LOADGEN_DIR}")
+endif()
+
+# add_subdirectory(${GRPC_INSTALL_DIR} ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
+add_subdirectory(${GRPC_DIR} ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
+set(_PROTOBUF_LIBPROTOBUF protobuf)
 set(_REFLECTION grpc++_reflection)
 set(_GRPC_GRPCPP grpc++)
 
 
-find_program(_PROTOBUF_PROTOC protoc)
-find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
+find_program(_PROTOBUF_PROTOC NAMES protoc PATHS ${GRPC_DIR})
 
+find_program(_GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin  PATHS ${GRPC_DIR})
+message(STATUS "_PROTOBUF_PROTOC: ${_PROTOBUF_PROTOC}")
+message(STATUS "_GRPC_CPP_PLUGIN_EXECUTABLE: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
 # Proto file
 get_filename_component(hw_proto "./inference.proto" ABSOLUTE)
 get_filename_component(hw_proto_path "${hw_proto}" PATH)
@@ -36,7 +56,7 @@ add_custom_command(
       DEPENDS "${hw_proto}")
 
 # Include generated *.pb.h files
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_PREFIX_PATH}/include")
 
 # hw_grpc_proto
 add_library(hw_grpc_proto
@@ -44,10 +64,13 @@ add_library(hw_grpc_proto
   ${hw_grpc_hdrs}
   ${hw_proto_srcs}
   ${hw_proto_hdrs})
+# link_directories({CMAKE_PREFIX_PATH}/lib/ ${CMAKE_PREFIX_PATH}/lib64/ .)
+
 target_link_libraries(hw_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF})
+  ${_PROTOBUF_LIBPROTOBUF}
+)
 
 # For dlc
 # set(ONNX_MLIR_SRC_ROOT /aivol/DLCpp/third_party/onnx-mlir/)
@@ -55,10 +78,15 @@ target_link_libraries(hw_grpc_proto
 #   NAMES cruntime
 #   PATHS /aivol/DLCpp/dlc-build/Debug/lib)
 # for onnx-mlir 2.0
-set(ONNX_MLIR_SRC_ROOT /aivol/onnx-mlir-new/)
+# set(ONNX_MLIR_SRC_ROOT /aivol/onnx-mlir-new/)
 find_library(CRuntime
   NAMES cruntime
-  PATHS /aivol/onnx-mlir-new/build/Debug/lib)  
+  PATHS ${ONNX_COMPILER_BUILD_DIR}/lib) 
+
+
+
+message(STATUS "CRuntime: ${CRuntime}")
+
 
 configure_file("./library.so"
   ${CMAKE_CURRENT_BINARY_DIR}/library.so COPYONLY)
@@ -68,7 +96,6 @@ set_property(TARGET OMRuntimeTestModel
             PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/library.so)
 
 # for loadgen
-set(LOADGEN_DIR /aivol/mlperf/inference1.0/loadgen)
 set(LOADGEN_LIB_DIR ${LOADGEN_DIR}/build)
 find_library(mlperf_loadgen
 	NAMES mlperf_loadgen
@@ -77,7 +104,9 @@ find_library(mlperf_loadgen
 # Targets greeter_[async_](client|server)
 foreach(_target
   AIU_async_client)
+  # include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/grpc/include")
   add_executable(${_target} "${_target}.cc")
+
   target_link_libraries(${_target}
     hw_grpc_proto
     ${_REFLECTION}
@@ -87,7 +116,9 @@ endforeach()
 
 foreach(_target
   AIU_async_server)
+  # include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/grpc/include")
   add_executable(${_target} "${_target}.cc")
+  # link_directories(. ${GRPC_INSTALL_DIR}/lib ${GRPC_INSTALL_DIR}/lib64 )
   target_link_libraries(${_target}
     ${CMAKE_CURRENT_BINARY_DIR}/library.so
     ${CRuntime}
@@ -96,12 +127,12 @@ foreach(_target
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
   target_include_directories(${_target} PRIVATE
-    ${ONNX_MLIR_SRC_ROOT}/include
-    ${ONNX_MLIR_SRC_ROOT})
+    ${ONNX_COMPILER_BUILD_DIR}/include)
 endforeach()
 
 foreach(_target
   app)
+  # include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/grpc/include")
   add_executable(${_target} "sut.cc")
   target_link_libraries(${_target}
     ${CMAKE_CURRENT_BINARY_DIR}/library.so
@@ -111,9 +142,9 @@ foreach(_target
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
+  # link_directories(. ${GRPC_INSTALL_DIR}/lib ${GRPC_INSTALL_DIR}/lib64 )
   target_include_directories(${_target} PRIVATE
-    ${ONNX_MLIR_SRC_ROOT}/include
-    ${ONNX_MLIR_SRC_ROOT}
+    ${ONNX_COMPILER_BUILD_DIR}/include
     ${LOADGEN_DIR})
 endforeach()
 

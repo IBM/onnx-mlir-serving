@@ -8,11 +8,8 @@
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
 
-#ifdef BAZEL_BUILD
-#include "examples/protos/inference.grpc.pb.h"
-#else
 #include "inference.grpc.pb.h"
-#endif
+
 
 using grpc::Channel;
 using grpc::ClientAsyncResponseReader;
@@ -107,6 +104,7 @@ class InferenceClient {
   CompletionQueue cq_;
 };
 
+// TBD: Testing Code! Move to test
 void readImage(std::string currentImagePath, std::vector<float> &imageData)
 {
 

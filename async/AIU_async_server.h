@@ -22,11 +22,8 @@
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
 
-#ifdef BAZEL_BUILD
-#include "examples/protos/inference.grpc.pb.h"
-#else
 #include "inference.grpc.pb.h"
-#endif
+
 
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;

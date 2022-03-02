@@ -1,15 +1,31 @@
 grpc source code: /aivol/grpc/
 
 grpc build: /aivol/grpc_install
+## Prerequisite
 
-## build:
+GPRC Installed
+
+https://github.com/grpc/grpc/blob/master/BUILDING.md#build-from-source
+
+GPRC Installation DIR example: grpc/cmake/install
+
+ONNX MLIR Build is built
+
+Pls copy include files from onnx-mlir source to onnx-mlir build dir.
 
 ```
-export MY_INSTALL_DIR=/aivol/grpc_install
-export PATH="$MY_INSTALL_DIR/bin:$PATH"
-mkdir build
-cd build
-cmake -DCMAKE_PREFIX_PATH=$MY_INSTALL_DIR ..
+ls aiu/onnx-mlir-build/*
+aiu/onnx-mlir-build/include:
+benchmark  CMakeLists.txt  google  onnx  onnx-mlir  OnnxMlirCompiler.h  OnnxMlirRuntime.h  rapidcheck  rapidcheck.h
+
+aiu/onnx-mlir-build/lib:
+libcruntime.a
+```
+
+## Build:
+
+```
+cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_BUILD_DIR:STRING${ONNX_MLIR_BUILD_DIR} -DLOADGEN_DIR:STRING=~/code/aiu/inference/loadgen -DCMAKE_PREFIX_PATH=/aiu/grpc/cmake/install ../..
 make -j
 ```
 
