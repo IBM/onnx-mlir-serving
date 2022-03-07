@@ -1,51 +1,38 @@
 #include "AIU_async_server.h"
+#include <ctime>
 
-
-void std::CallData::Proceed(void *threadpool){
+void CallData::Proceed(void *threadpool){
   if (status_ == CREATE) {
     // Make this instance progress to the PROCESS state.
     status_ = PROCESS;
     switch (s_type_){
-      case std::CallData::inference:
+      case CallData::inference:
         service_->RequestInference(&ctx_, &request_, &responder_, cq_, cq_, this);
         break;
-      case std::CallData::end:
+      case CallData::end:
         service_->RequestEnd(&ctx_, &endRequest_, &endResponder_, cq_, cq_, this);
         break;
       default:
-        break;  
+        break;
     }
     // service_->RequestInference(&ctx_, &request_, &responder_, cq_, cq_,this);
   } else if (status_ == PROCESS) {
 
     switch (s_type_){
-      case std::CallData::inference:
-        new std::CallData(service_, cq_,std::CallData::inference);
-        static_cast<std::AIUThreadpool*>(threadpool)->addCallData(this);
-        now = std::chrono::high_resolution_clock::now();
+      case CallData::inference:
+        new CallData(service_, cq_,CallData::inference);
+        static_cast<AIUThreadpool*>(threadpool)->addCallData(this);
+        now = high_resolution_clock::now();
         break;
-      case std::CallData::end:
-        new std::CallData(service_, cq_,std::CallData::end);
-        static_cast<std::AIUThreadpool*>(threadpool)->printlogs();
+      case CallData::end:
+        new CallData(service_, cq_,CallData::end);
+        static_cast<AIUThreadpool*>(threadpool)->printlogs();
         status_ = FINISH;
         endResponder_.Finish(endReply_, Status::OK, this);
         break;
       default:
-        break;  
+        break;
     }
-    // new std::CallData(service_, cq_);
-
-    // // The actual processing.
-    // // string prefix("Hello ");
-    // // reply_.set_message(prefix + request_.data());
-
-    // static_cast<std::AIUThreadpool*>(threadpool)->addCallData(this);
-    // now = std::chrono::high_resolution_clock::now();
-    // // And we are done! Let the gRPC runtime know we've finished, using the
-    // // memory address of this instance as the uniquely identifying tag for
-    // // the event.
-    // // status_ = FINISH;
-    // // responder_.Finish(reply_, Status::OK, this);
   } else {
     GPR_ASSERT(status_ == FINISH);
     // Once in the FINISH state, deallocate ourselves (CallData).
@@ -83,34 +70,54 @@ class ServerImpl final {
     std::cout << "Server listening on " << server_address << std::endl;
 
     // Proceed to the server's main loop.
-    new std::CallData(&service_, cq_.get(),std::CallData::inference);
-    new std::CallData(&service_, cq_.get(),std::CallData::end);
-    HandleRpcs();
+    // new std::CallData(&service_, cq_.get(),std::CallData::inference);
+    // new std::CallData(&service_, cq_.get(),std::CallData::end);
+    // HandleRpcs();
+    new CallData(&service_, cq_.get(),CallData::end);
+    for(int i = 0; i < 20; i++){
+      async_threads.emplace_back([this](int i){
+        HandleRpcs(i);
+      },i);
+    }
 
-    
+    for (std::thread& thread : async_threads) {
+        //thread.detach();
+        if(thread.joinable())
+            thread.join();
+    }
+
   }
 
  private:
 
 
   // This can be run in multiple threads if needed.
-  void HandleRpcs() {
+  void HandleRpcs(int i) {
     // Spawn a new CallData instance to serve new clients.
+
+    new CallData(&service_, cq_.get(),CallData::inference);
+
     void* tag;  // uniquely identifies a request.
     bool ok;
     while (true) {
+      {
+      lock_guard<mutex> lock(mtx_);
       GPR_ASSERT(cq_->Next(&tag, &ok));
-      GPR_ASSERT(ok);
-      static_cast<std::CallData*>(tag)->Proceed(&tpool);
+      }
+      // GPR_ASSERT(ok);
+      if(ok){
+        static_cast<CallData*>(tag)->Proceed(&tpool);
+      }
+
     }
   }
 
-  std::unique_ptr<ServerCompletionQueue> cq_;
+  std::shared_ptr<ServerCompletionQueue> cq_;
   InferenceService::AsyncService service_;
-  std::AIUThreadpool tpool;
-  std::unique_ptr<Server> server_;
-  std::vector<std::thread> async_threads;
-  std::mutex  mtx_;
+  AIUThreadpool tpool;
+  std::shared_ptr<Server> server_;
+  vector<std::thread> async_threads;
+  mutex  mtx_;
 };
 
 int main(int argc, char** argv) {
@@ -123,6 +130,9 @@ int main(int argc, char** argv) {
   if (argc >= 3) {
     threadNum = std::stoi(argv[2]);
   }
+
+  modelLoder.LoadModel("./library.so");
+
   ServerImpl server(threadNum, wait);
   server.Run();
 
