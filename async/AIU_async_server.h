@@ -13,13 +13,15 @@
 //#include <thread>
 //#include <functional>
 #include <stdexcept>
+#include <sys/prctl.h>
 // #include "date.h"
 //
 #include <iostream>
 #include <sstream>
 #include <memory>
 #include <string>
-#include <thread>
+// #include <thread>
+#include <pthread.h>
 
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
@@ -63,7 +65,7 @@ using std::chrono::high_resolution_clock;
 
 
 #define  THREADPOOL_MAX_NUM 20
-#define  MODEL_MAX_NUM 10
+// #define  MODEL_MAX_NUM 16
 
 DLCModelLoader modelLoder;
 
@@ -125,10 +127,13 @@ class AIUThreadpool
   atomic<int>  _idlThrNum{ 0 };
   int wait = 0;
   std::stringstream _log_stream;
+  int _batch_size = 1;
 
   public:
-    AIUThreadpool(unsigned short size, int wait_){ 
+    AIUThreadpool(int batchSize, unsigned short size, int wait_){ 
       wait = wait_;
+      _batch_size = batchSize;
+      int num=sysconf(_SC_NPROCESSORS_CONF) / 12;
       addThread(size);
       timeThread();
     }
@@ -151,14 +156,16 @@ public:
         lock_guard<mutex> lock(_lock);
         _inference_data.push(data);
         size = _inference_data.size();
-        if((size >= MODEL_MAX_NUM || wait == 0 )  ){
+        if( (size >= _batch_size || wait == 0 ) ){
           _task_cv.notify_one();
         }
       }
     }
 
     void printlogs(){
+      std::cout << "print log " <<std::endl;
       std::cout << _log_stream.str() << std::endl;
+      _log_stream.clear();
     }
 
     void forceRun(){
@@ -185,14 +192,14 @@ public:
               high_resolution_clock::time_point pnow = _inference_data.front()->now;
               high_resolution_clock::time_point now = high_resolution_clock::now();
               d = std::chrono::duration<double, std::nano>(now -pnow).count();
-              double w = wait * (float)size;
+              double w =(double) wait; // * (float)size;
               if(d >= w && idlCount()>0){
                 forceRun();
               }
             } 
           }
 
-          std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+          std::this_thread::sleep_for(std::chrono::nanoseconds((int)(wait-d)));
         }
       });
 
@@ -203,13 +210,28 @@ public:
     {
         for (; _pool.size() < THREADPOOL_MAX_NUM && size > 0; --size)
         {  
-            _pool.emplace_back( [this]{ 
+            _pool.emplace_back( [this](unsigned short cpuindex){ 
+              size_t cpu = (cpuindex-1) * 12;
+              int total_cpu_num = sysconf(_SC_NPROCESSORS_CONF);
+              cpu = cpu % total_cpu_num + cpu / total_cpu_num;
+              cpu_set_t mask;
+              cpu_set_t get;
+              CPU_ZERO(&mask);
+              CPU_SET(*&cpu,&mask);
+              char tname[20];
+              sprintf(tname, "AIU t %d", cpu);
+              std::cout<<tname<<std::endl;
+              prctl(PR_SET_NAME, tname);
+              if(sched_setaffinity(0,sizeof(cpu_set_t),&mask)==-1)
+              {
+                  printf("warning: could not set CPU affinity, continuing...\n");
+              }
                 while (_run)
                 {
                     high_resolution_clock::time_point pnow;
                     high_resolution_clock::time_point now;
                     vector<CallData*> my_queue;
-                    my_queue.reserve(MODEL_MAX_NUM);
+                    my_queue.reserve(_batch_size);
                     {
                       unique_lock<mutex> lock{ _lock };
                       double d = 0;
@@ -219,7 +241,7 @@ public:
                         pnow = _inference_data.front()->now;
                         now = high_resolution_clock::now();
                         d = std::chrono::duration<double, std::nano>(now -pnow).count();
-                      }while(_inference_data.size()<MODEL_MAX_NUM && d <wait);
+                      }while(_inference_data.size()<_batch_size && d <wait);
 
 
                       if (!_run && _inference_data.empty())
@@ -229,7 +251,7 @@ public:
                       
                       int count = 0;
                       int totalsize = _inference_data.size();
-                      while(count<MODEL_MAX_NUM && count<totalsize){
+                      while(count<_batch_size && count<totalsize){
                           my_queue.push_back(_inference_data.front());
                           _inference_data.pop();
                           count ++;
@@ -237,15 +259,19 @@ public:
 
                       lock.unlock();
                       lock_guard<mutex> log_lock(_log_mutex);
-                      _log_stream << std::this_thread::get_id() << ",wake up," << _inference_data.size() << "," << d << ",";
+                      _log_stream << std::this_thread::get_id() << ",wake up," << my_queue.size() << "," << d << ",";
                       _log_stream << std::to_string(std::chrono::duration<double, std::nano>(pnow -originTime).count()) << ",";
                       _log_stream << std::to_string(std::chrono::duration<double, std::nano>(now -originTime).count()) << std::endl;
                     }
                     _idlThrNum--;
-                    runInference(my_queue); //run AI model
+                    if(my_queue.size() == 1){
+                      runInference_1(my_queue);
+                    }else{
+                      runInference(my_queue); 
+                    }
                     _idlThrNum++;
                 }
-            });
+            }, size);
             _idlThrNum++;
         }
     }
@@ -254,7 +280,7 @@ public:
 
       high_resolution_clock::time_point pnow = high_resolution_clock::now();
 
-      size_t batchsize = calldata_list.size();
+      int64_t batchsize = calldata_list.size();
 
       int64_t rank = 3;
       int64_t shape[3] = {7,batchsize,204};
@@ -290,7 +316,7 @@ public:
 
       // chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
 
-      // float singleResult[MODEL_MAX_NUM*7] = {0};
+      // float singleResult[_batch_size*7] = {0};
       float* start = singleResult;
       for(size_t i = 0;i < batchsize; i++ ){
         // if(i<calldata_list.size()){
@@ -322,6 +348,46 @@ public:
 
 
     }
+
+    void runInference_1(vector<CallData*> calldata_list){
+
+      high_resolution_clock::time_point pnow = high_resolution_clock::now();
+
+      auto curr = calldata_list[0]->getRequestData();
+      int64_t rank = curr.shape().size();
+      int64_t* shape = curr.mutable_shape()->mutable_data();
+      float *x1Data = curr.mutable_data()->mutable_data();
+
+      int64_t batchsize = calldata_list.size();
+
+
+      OMTensor *y = modelLoder.RunModel(x1Data, shape, rank, ONNX_TYPE_FLOAT);; //omTensorListGetOmtByIndex(outputList,0);
+      float *prediction = (float *)omTensorGetDataPtr(y);
+      int64_t *output_shape = omTensorGetShape(y);
+      int resultsize = 1;
+      for(int i = 0; i < omTensorGetRank(y); i++){
+        resultsize *= output_shape[i];
+      }
+
+      calldata_list[0]->sendBack(prediction,resultsize);
+
+
+      high_resolution_clock::time_point now = high_resolution_clock::now();
+      double d = std::chrono::duration<double, std::nano>(now -pnow).count();
+
+      // free(prediction);
+      // omTensorDestroy(x1);
+      omTensorDestroy(y);
+
+      lock_guard<mutex> lock(_log_mutex);
+
+      //thread id, action, size, dur, start time, now time
+      _log_stream << std::this_thread::get_id() << ",inference," << batchsize << "," << std::to_string(d) << ",";
+      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(pnow -originTime).count()) << ",";
+      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(now -originTime).count()) << std::endl;
+
+
+    }    
 
 };
 

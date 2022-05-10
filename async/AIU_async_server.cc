@@ -26,7 +26,9 @@ void CallData::Proceed(void *threadpool){
         break;
       case CallData::end:
         new CallData(service_, cq_,CallData::end);
+        std::cout << "get end request " <<std::endl;
         static_cast<AIUThreadpool*>(threadpool)->printlogs();
+        std::cout << "get end request2 " <<std::endl;
         status_ = FINISH;
         endResponder_.Finish(endReply_, Status::OK, this);
         break;
@@ -48,13 +50,14 @@ class ServerImpl final {
     cq_->Shutdown();
   }
 
-  ServerImpl(int threadNum_, int wait):tpool(threadNum_, wait){
+  ServerImpl(int batch_size, int threadNum_, int wait):tpool(batch_size, threadNum_, wait){
     // tpool = std::AIUThreadpool(5);
   }
 
   // There is no shutdown handling in this code.
   void Run() {
     std::string server_address("0.0.0.0:50051");
+    // std::string server_address("10.1.20.98:50051");
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
@@ -74,17 +77,19 @@ class ServerImpl final {
     // new std::CallData(&service_, cq_.get(),std::CallData::end);
     // HandleRpcs();
     new CallData(&service_, cq_.get(),CallData::end);
-    for(int i = 0; i < 20; i++){
-      async_threads.emplace_back([this](int i){
-        HandleRpcs(i);
-      },i);
-    }
+    new CallData(&service_, cq_.get(),CallData::inference);
+    HandleRpcs(0);
+    // for(int i = 0; i < 2; i++){
+    //   async_threads.emplace_back([this](int i){
+    //     HandleRpcs(i);
+    //   },i);
+    // }
 
-    for (std::thread& thread : async_threads) {
-        //thread.detach();
-        if(thread.joinable())
-            thread.join();
-    }
+    // for (std::thread& thread : async_threads) {
+    //     //thread.detach();
+    //     if(thread.joinable())
+    //         thread.join();
+    // }
 
   }
 
@@ -95,15 +100,13 @@ class ServerImpl final {
   void HandleRpcs(int i) {
     // Spawn a new CallData instance to serve new clients.
 
-    new CallData(&service_, cq_.get(),CallData::inference);
-
     void* tag;  // uniquely identifies a request.
     bool ok;
     while (true) {
-      {
+      
       lock_guard<mutex> lock(mtx_);
       GPR_ASSERT(cq_->Next(&tag, &ok));
-      }
+      
       // GPR_ASSERT(ok);
       if(ok){
         static_cast<CallData*>(tag)->Proceed(&tpool);
@@ -124,16 +127,20 @@ int main(int argc, char** argv) {
   // std::AIUThreadpool tpool(5);
   int wait = 0;
   int threadNum = 10;
+  int batch_size = 10;
   if (argc >= 2) {
     wait = std::stoi(argv[1]);
   }
   if (argc >= 3) {
-    threadNum = std::stoi(argv[2]);
+    batch_size = std::stoi(argv[2]);
+  }
+  if(argc >=4){
+    threadNum = std::stoi(argv[3]);
   }
 
   modelLoder.LoadModel("./library.so");
 
-  ServerImpl server(threadNum, wait);
+  ServerImpl server(batch_size, threadNum, wait);
   server.Run();
 
   return 0;

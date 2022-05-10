@@ -1,5 +1,6 @@
 #include "sut.h"
 
+// ./single /aivol/inputs/ccf1_inputs 0 1
 int main(int argc, char** argv) {
   assert(argc >= 3 && "Need to pass input dir and log suffix");
 

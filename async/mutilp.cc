@@ -1,4 +1,6 @@
 #include "sut.h"
+#include<stdlib.h>
+#include <time.h>
 
 // m /aivol/inputs/ccf1_inputs <prefix> <multi_stream_samples_per_query> <grpcCall>
 int main(int argc, char** argv) {
@@ -20,19 +22,29 @@ int main(int argc, char** argv) {
   QSL qsl(ds);
   std::unique_ptr<mlperf::SystemUnderTest> sut;
 
+  time_t my_time = time(NULL);
+  printf("%s", ctime(&my_time));
+
   // Configure the test settings
   mlperf::TestSettings testSettings;
+
   testSettings.scenario = mlperf::TestScenario::MultiStream;
-  testSettings.mode = mlperf::TestMode::PerformanceOnly;
   testSettings.multi_stream_samples_per_query = multi_stream_samples_per_query; //10000000;  // 10ms
-  testSettings.multi_stream_target_qps = 10;
-  testSettings.multi_stream_target_latency_ns = 4000000;
+  testSettings.multi_stream_target_qps = 130;
+  testSettings.multi_stream_target_latency_ns = 7679801;
   testSettings.multi_stream_target_latency_percentile = 0.99;
-  testSettings.min_duration_ms = 60000;
+
+
+  // testSettings.scenario = mlperf::TestScenario::SingleStream;
+  testSettings.single_stream_expected_latency_ns = 300000; //10000000;  // 10ms
+  testSettings.single_stream_target_latency_percentile = 0.99;
+
+
+  testSettings.min_duration_ms = 180000;
   testSettings.min_query_count = 10;
-
-
+  testSettings.mode = mlperf::TestMode::PerformanceOnly;
   // Configure the logging settings
+
   mlperf::LogSettings logSettings;
   logSettings.log_output.outdir = "build";
   logSettings.log_output.prefix = "mlperf_log_";
@@ -42,11 +54,12 @@ int main(int argc, char** argv) {
   logSettings.log_output.copy_summary_to_stdout = false;
   logSettings.log_mode = mlperf::LoggingMode::AsyncPoll;
   logSettings.log_mode_async_poll_interval_ms = 1000;
-  logSettings.enable_trace = true;
+  logSettings.enable_trace = false;
+
 
 
   std::cout << "Using QueueSUT" << std::endl;
-  sut.reset(new QueueSUT(1, ds));
+  sut.reset(new BasicSUT(ds));
 
   // Start test
   std::cout << "Start test..." << std::endl;
@@ -60,10 +73,14 @@ int main(int argc, char** argv) {
 //     client->end();
 //   }
 
+  my_time = time(NULL);
+  printf("%s", ctime(&my_time));
 
-  InferenceClient* client = new InferenceClient(grpc::CreateChannel( "localhost:50051", grpc::InsecureChannelCredentials()));
+  InferenceClient* client = new InferenceClient(grpc::CreateChannel( "10.1.20.98:50051", grpc::InsecureChannelCredentials()));
   client->end();
   std::cout << "send end" << std::endl;
+
+
 
   return 0;
 }
