@@ -91,7 +91,7 @@ class CallData
 
     void sendBack(float* data, int size){
       reply_.mutable_data()->Add(data, data+size);
-      reply_.set_id(request_.id());
+      // reply_.set_id(request_.id());
       status_ = FINISH;
       responder_.Finish(reply_, Status::OK, this);
     }
@@ -281,7 +281,7 @@ public:
       high_resolution_clock::time_point pnow = high_resolution_clock::now();
 
       int64_t batchsize = calldata_list.size();
-
+      
       int64_t rank = 3;
       int64_t shape[3] = {7,batchsize,204};
       int64_t totalsize = 7* batchsize * 204;

@@ -1,31 +1,51 @@
 
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.12)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -W -Wall -pthread")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(HelloWorld C CXX)
+project(AIU_grpc)
 
 # include(../cmake/common.cmake)
-add_subdirectory(../../.. ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
+# Provide grpc installation directory
+if(DEFINED GRPC_DIR)
+  message(STATUS "GPRC_DIR: ${GRPC_DIR}")
+else()
+  message(FATAL_ERROR "Provide GPRC_DIR pls:${GRPC_DIR}")
+endif()
+if(DEFINED ONNX_COMPILER_BUILD_DIR)
+  message(STATUS "ONNX_COMPILER_BUILD_DIR: ${ONNX_COMPILER_BUILD_DIR}")
+else()
+  message(FATAL_ERROR "Provide ONNX_COMPILER_BUILD_DIR pls:${ONNX_COMPILER_BUILD_DIR}")
+endif()
+if(DEFINED LOADGEN_DIR)
+  message(STATUS "LOADGEN_DIR: ${LOADGEN_DIR}")
+else()
+  message(FATAL_ERROR "Provide LOADGEN_DIR pls:${LOADGEN_DIR}")
+endif()
+
+# add_subdirectory(/aivol/grpc/ ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
+add_subdirectory(${GRPC_DIR} ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
 set(_PROTOBUF_LIBPROTOBUF libprotobuf)
 set(_REFLECTION grpc++_reflection)
 set(_GRPC_GRPCPP grpc++)
-# find_library(_REFLECTION NAMES grpc++_reflection /aivol/grpc/examples/cpp/helloworld/cmake/build/grpc)
-# find_library(_GRPC_GRPCPP NAMES grpc++ /aivol/grpc/examples/cpp/helloworld/cmake/build/grpc)
+
 
 find_program(_PROTOBUF_PROTOC protoc)
+
 find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
 
+message(STATUS "_PROTOBUF_PROTOC: ${_PROTOBUF_PROTOC}")
+message(STATUS "_GRPC_CPP_PLUGIN_EXECUTABLE: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
 # Proto file
-get_filename_component(hw_proto "./helloworld.proto" ABSOLUTE)
+get_filename_component(hw_proto "./utils/inference.proto" ABSOLUTE)
 get_filename_component(hw_proto_path "${hw_proto}" PATH)
 
 # Generated sources
-set(hw_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.cc")
-set(hw_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.h")
-set(hw_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.cc")
-set(hw_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.h")
+set(hw_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/inference.pb.cc")
+set(hw_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/inference.pb.h")
+set(hw_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/inference.grpc.pb.cc")
+set(hw_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/inference.grpc.pb.h")
 add_custom_command(
       OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
       COMMAND ${_PROTOBUF_PROTOC}
@@ -48,67 +68,82 @@ add_library(hw_grpc_proto
 target_link_libraries(hw_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF})
+  ${_PROTOBUF_LIBPROTOBUF}
+  )
 
 # For dlc
-set(ONNX_MLIR_SRC_ROOT /aivol/DLCpp/third_party/onnx-mlir/)
 find_library(CRuntime
   NAMES cruntime
-  PATHS /aivol/DLCpp/dlc-build/Debug/lib)  
+  PATHS ${ONNX_COMPILER_BUILD_DIR}/lib) 
+message(STATUS "CRuntime: ${CRuntime}")
 
-configure_file(/aivol/onnx-zoo-scripts/models_so/onnx-zoo/models/vision/classification/mnist/model/mnist-7.so
-  ${CMAKE_CURRENT_BINARY_DIR}/library.so COPYONLY)
-
-add_library(OMRuntimeTestModel SHARED IMPORTED)
-set_property(TARGET OMRuntimeTestModel
-            PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/library.so)
 
 # for loadgen
-set(LOADGEN_DIR /aivol/mlperf/inference1.0/loadgen)
 set(LOADGEN_LIB_DIR ${LOADGEN_DIR}/build)
 find_library(mlperf_loadgen
 	NAMES mlperf_loadgen
 	PATHS ${LOADGEN_LIB_DIR})
 
+
+add_executable(AIU_async_client "grpc_client/AIU_async_client.cc")
+target_link_libraries(AIU_async_client 
+              hw_grpc_proto
+              ${_REFLECTION}
+              ${_GRPC_GRPCPP}
+              ${_PROTOBUF_LIBPROTOBUF})
+
+add_executable(AIU_async_server "grpc_server/AIU_async_server.cc")              
+target_link_libraries(AIU_async_server
+              ${CRuntime}
+              hw_grpc_proto
+              ${_REFLECTION}
+              ${_GRPC_GRPCPP}
+              ${_PROTOBUF_LIBPROTOBUF})
+target_include_directories(AIU_async_server PRIVATE
+              ${ONNX_COMPILER_BUILD_DIR}/include)
+
+
+
 # Targets greeter_[async_](client|server)
-foreach(_target
-  greeter_client)
-  add_executable(${_target} "${_target}.cc")
-  target_link_libraries(${_target}
-    hw_grpc_proto
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-endforeach()
+# foreach(_target
+#   AIU_async_client)
+#   add_executable(${_target} "${_target}.cc")
+#   target_link_libraries(${_target}
+#     hw_grpc_proto
+#     ${_REFLECTION}
+#     ${_GRPC_GRPCPP}
+#     ${_PROTOBUF_LIBPROTOBUF})
+# endforeach()
 
-foreach(_target
-  greeter_server greeter_server2 )
-  add_executable(${_target} "${_target}.cc")
-  target_link_libraries(${_target}
-    ${CMAKE_CURRENT_BINARY_DIR}/library.so
-    ${CRuntime}
-    hw_grpc_proto
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-  target_include_directories(${_target} PRIVATE
-    ${ONNX_MLIR_SRC_ROOT}/include
-    ${ONNX_MLIR_SRC_ROOT})
-endforeach()
+# foreach(_target
+#   AIU_async_server)
+#   add_executable(${_target} "${_target}.cc")
+#   target_link_libraries(${_target}
+#     # ${zdnn}
+#     # ${CMAKE_CURRENT_BINARY_DIR}/library.so
+#     ${CRuntime}
+#     hw_grpc_proto
+#     ${_REFLECTION}
+#     ${_GRPC_GRPCPP}
+#     ${_PROTOBUF_LIBPROTOBUF})
+#   target_include_directories(${_target} PRIVATE
+#     ${ONNX_COMPILER_BUILD_DIR}/include)
+# endforeach()
 
-foreach(_target
-  app )
-  add_executable(${_target} "main.cc" "mlperf_sut.cc")
-  target_link_libraries(${_target}
-    ${CMAKE_CURRENT_BINARY_DIR}/library.so
-    ${CRuntime}
-    ${mlperf_loadgen}
-    hw_grpc_proto
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-  target_include_directories(${_target} PRIVATE
-    ${ONNX_MLIR_SRC_ROOT}/include
-    ${ONNX_MLIR_SRC_ROOT}
-    ${LOADGEN_DIR})
-endforeach()
+
+# foreach(_target
+#   sut single multip)
+#   add_executable(${_target} "${_target}.cc")
+#   target_link_libraries(${_target}
+#     # ${zdnn}
+#     # ${CMAKE_CURRENT_BINARY_DIR}/library.so
+#     ${CRuntime}
+#     ${mlperf_loadgen}
+#     hw_grpc_proto
+#     ${_REFLECTION}
+#     ${_GRPC_GRPCPP}
+#     ${_PROTOBUF_LIBPROTOBUF})
+#   target_include_directories(${_target} PRIVATE
+#     ${ONNX_COMPILER_BUILD_DIR}/include
+#     ${LOADGEN_DIR})
+# endforeach()

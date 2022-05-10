@@ -1,4 +1,4 @@
-#include "sut.h"
+#include "utils/sut.h"
 
 // ./single /aivol/inputs/ccf1_inputs 0 1
 int main(int argc, char** argv) {

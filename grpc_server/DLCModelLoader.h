@@ -65,7 +65,7 @@ class DLCModelLoader
     OMTensorList *(*dll_omTensorListCreate)(OMTensor **, int);
     OMTensor *(*dll_omTensorListGetOmtByIndex)(OMTensorList *, int64_t);
     void *(*dll_omTensorGetDataPtr)(OMTensor *);
-    void (*dll_omTensorDestroy)(OMTensor *tensor)
+    void (*dll_omTensorDestroy)(OMTensor *tensor);
     void (*dll_omTensorListDestroy)(OMTensorList *);
 };
 
