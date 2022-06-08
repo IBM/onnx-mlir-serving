@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   if(std::stoi(argv[2]) == 0){
     std::cout << "send end" << std::endl;
     InferenceClient* client = new InferenceClient(grpc::CreateChannel( "localhost:50051", grpc::InsecureChannelCredentials()));
-    client->end();
+    client->printStatistics();
   }
 
   // std::cout << "send end" << std::endl;

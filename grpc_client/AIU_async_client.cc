@@ -36,8 +36,8 @@ using grpc::Status;
 using inference::InferenceService;
 using inference::InferenceResponse;
 using inference::InferenceRequest;
-using inference::EndRequest;
-using inference::EndResponse;
+using inference::PrintStatisticsRequest;
+using inference::PrintStatisticsResponse;
 using std::chrono::high_resolution_clock;
 
 
@@ -136,14 +136,14 @@ class InferenceClient {
   explicit InferenceClient(std::shared_ptr<Channel> channel)
       : stub_(InferenceService::NewStub(channel)) {}
 
-  void end(){
-    EndRequest request;
-    EndResponse response;
+  void printStatistics(){
+    PrintStatisticsRequest request;
+    PrintStatisticsResponse response;
     ClientContext context;
     CompletionQueue cq;
     Status status;
-    std::unique_ptr<ClientAsyncResponseReader<EndResponse> > rpc(
-            stub_->PrepareAsyncEnd(&context, request, &cq));
+    std::unique_ptr<ClientAsyncResponseReader<PrintStatisticsResponse> > rpc(
+            stub_->PrepareAsyncPrintStatistics(&context, request, &cq));
     rpc->StartCall();
     rpc->Finish(&response, &status, (void*)1);
     void* got_tag;
@@ -161,6 +161,7 @@ class InferenceClient {
     InferenceRequest request;
     request.mutable_data()->Add(input_data.begin(), input_data.end());
     request.mutable_shape()->Add(ds->shape, ds->shape+ds->rank);
+    request.set_model_name("ccf1");
 
     InferenceResponse reply;
     ClientContext context;
@@ -308,6 +309,7 @@ class Simlate{
     }
 };
 
+// ./AIU_async_client /aivol/inputs/ccf1_inputs 1 1
 int main(int argc, char** argv) {
 
   Dataset ds(argv[1]);
@@ -337,7 +339,7 @@ int main(int argc, char** argv) {
 
 
   InferenceClient* client = new InferenceClient(grpc::CreateChannel( host, grpc::InsecureChannelCredentials()));
-  client->end();
+  client->printStatistics();
 
 
   return 0;

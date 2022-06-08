@@ -7,7 +7,7 @@
 #include <atomic>
 #include <future>
 
-
+#include <fstream>
 #include <chrono>
 //#include <condition_variable>
 //#include <thread>
@@ -28,8 +28,10 @@
 
 
 #include "inference.grpc.pb.h"
+// #include "onnx.pb.h"
 
-#include "DLCModelLoader.h"
+
+#include "AIUThreadPool.h"
 
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;
@@ -40,8 +42,8 @@ using grpc::Status;
 using inference::InferenceService;
 using inference::InferenceResponse;
 using inference::InferenceRequest;
-using inference::EndRequest;
-using inference::EndResponse;
+using inference::PrintStatisticsRequest;
+using inference::PrintStatisticsResponse;
 
 // #include "OnnxMlirRuntime.h"
 // extern "C"{
@@ -49,7 +51,7 @@ using inference::EndResponse;
 // }
 
 
-std::chrono::high_resolution_clock::time_point  originTime(std::chrono::seconds(1646319840));
+
 
 
 using std::vector;
@@ -65,21 +67,19 @@ using std::chrono::high_resolution_clock;
 
 
 #define  THREADPOOL_MAX_NUM 20
-// #define  MODEL_MAX_NUM 16
 
-DLCModelLoader modelLoder;
 
-class CallData
+class CallData:public AbstractCallData
 {
   
 	public:
 		enum ServiceType {
 			inference = 0,
-			end = 1
+			printStatistics = 1
 		};
   public:
     CallData(InferenceService::AsyncService* service, ServerCompletionQueue* cq, ServiceType s_type)
-        : service_(service), cq_(cq), s_type_(s_type), responder_(&ctx_), endResponder_(&ctx_), status_(CREATE){
+        : service_(service), cq_(cq), responder_(&ctx_), printStatisticsResponder_(&ctx_), s_type_(s_type), status_(CREATE){
       Proceed(NULL);
     }
 
@@ -96,301 +96,142 @@ class CallData
       responder_.Finish(reply_, Status::OK, this);
     }
 
-    high_resolution_clock::time_point now;
+    // high_resolution_clock::time_point now;
 
   private:
     InferenceService::AsyncService* service_;
     ServerCompletionQueue* cq_;
     ServerContext ctx_;
     InferenceRequest request_;
-    EndRequest endRequest_;
+    PrintStatisticsRequest printStatisticsRequest_;
     InferenceResponse reply_;
-    EndResponse endReply_;
+    PrintStatisticsResponse printStatisticsReply_;
     ServerAsyncResponseWriter<InferenceResponse> responder_;
-    ServerAsyncResponseWriter<EndResponse> endResponder_;
+    ServerAsyncResponseWriter<PrintStatisticsResponse> printStatisticsResponder_;
+    ServiceType s_type_;
     enum CallStatus { CREATE, PROCESS, FINISH };
     CallStatus status_;  // The current serving state.
-    ServiceType s_type_;
+
 };
 
-
-class AIUThreadpool
-{
-  using Task = std::function<void()>;
-  vector<thread> _pool; 
-  vector<thread> timecheck;
-  queue<CallData*> _inference_data;
-  mutex _lock;
-  mutex _log_mutex;
-  condition_variable _task_cv;
-  atomic<bool> _run{ true };
-  atomic<int>  _idlThrNum{ 0 };
-  int wait = 0;
-  std::stringstream _log_stream;
-  int _batch_size = 1;
-
+class DLCModelManager{
   public:
-    AIUThreadpool(int batchSize, unsigned short size, int wait_){ 
-      wait = wait_;
-      _batch_size = batchSize;
-      int num=sysconf(_SC_NPROCESSORS_CONF) / 12;
-      addThread(size);
-      timeThread();
+    DLCModelManager(int batch_size, int thread_num, int wait_time):tpool_(thread_num),checkBatchingThread_([this]{checkBatching();}){
+      batch_size_ = batch_size;
+      wait_time_  = wait_time;
     }
-    ~AIUThreadpool()
-    {
-        _run=false;
-        _task_cv.notify_all();
-        for (thread& thread : _pool) {
-            //thread.detach();
-            if(thread.joinable())
-                thread.join(); 
-        }
+    ~DLCModelManager(){ 
+      run_=0;
+      if(checkBatchingThread_.joinable()){
+        checkBatchingThread_.join();
+      }
     }
-
-public:
-
-    void addCallData(CallData *data){
-      int size = _inference_data.size();
+    int AddModel(CallData *data){
+      const char* model_name = data->getRequestData().model_name().c_str();
+      DLCModel* model = NULL;
       {
-        lock_guard<mutex> lock(_lock);
-        _inference_data.push(data);
-        size = _inference_data.size();
-        if( (size >= _batch_size || wait == 0 ) ){
-          _task_cv.notify_one();
+        lock_guard<mutex> lock(lock_);
+        model = Get_model(model_name);
+      }
+
+      if(model == NULL){
+        data->sendBack(NULL, 0);
+        return 0;
+      }
+
+      //no batching, add task to thread pool right now
+      if(model->batching == 0)
+      {
+        // std::cout<<"no batching"<<std::endl;
+        tpool_.AddTask(model->Perpare_and_run(data));
+      }
+      //else add data to inference queue, wait batching
+      else
+      { 
+        // std::cout<<"batching"<<std::endl;
+        model->AddInferenceData(data);
+      }
+
+      return 1;
+
+    }
+    void PrintLogs(){
+      tpool_.PrintLogs();
+    }
+
+  private:
+    void checkBatching(){
+      while(run_){
+        {
+          lock_guard<mutex> lock(lock_);
+          for (size_t i = 0; i < models_.size(); i++){
+            DLCModel* model = models_.at(i);
+            if(model->batching && model->Ready(wait_time_)){
+              tpool_.AddTask(model->Perpare_and_run(batch_size_));
+            }
+          }
         }
+        std::this_thread::sleep_for(std::chrono::nanoseconds((int)(10000)));
       }
     }
 
-    void printlogs(){
-      std::cout << "print log " <<std::endl;
-      std::cout << _log_stream.str() << std::endl;
-      _log_stream.clear();
-    }
+    DLCModel* Get_model(const char* model_name){
+      DLCModel* model = NULL;
+      //get model from exist model queue
+      for (size_t i = 0; i < models_.size(); i++)
+      {
+        if(strcmp(model_name, models_[i]->model_name)==0){
+          model = models_[i];
+          return model;
+        }
+      }
 
-    void forceRun(){
-      _task_cv.notify_one();
-    }
-
-
-    int idlCount() { return _idlThrNum; }
-
-    int thrCount() { return _pool.size(); }
-
-    void timeThread(){
+      //create new model when not find
+      std::cout<<"create new model " << model_name <<std::endl;
+      model = new DLCModel(model_name);
+      if(model->model_name[0] == 0){
+        return NULL;
+      }
+      models_.emplace_back(model);
       
-      timecheck.emplace_back([this]{
-        while(_run){
-          bool check = false;
-          int size = 0;
-          double d = 0;
-          {
-            lock_guard<mutex> lock(_lock);
-
-            size = _inference_data.size();
-            if(size>0 && wait !=0){
-              high_resolution_clock::time_point pnow = _inference_data.front()->now;
-              high_resolution_clock::time_point now = high_resolution_clock::now();
-              d = std::chrono::duration<double, std::nano>(now -pnow).count();
-              double w =(double) wait; // * (float)size;
-              if(d >= w && idlCount()>0){
-                forceRun();
-              }
-            } 
-          }
-
-          std::this_thread::sleep_for(std::chrono::nanoseconds((int)(wait-d)));
-        }
-      });
-
-    }
-    
-
-    void addThread(unsigned short size)
-    {
-        for (; _pool.size() < THREADPOOL_MAX_NUM && size > 0; --size)
-        {  
-            _pool.emplace_back( [this](unsigned short cpuindex){ 
-              size_t cpu = (cpuindex-1) * 12;
-              int total_cpu_num = sysconf(_SC_NPROCESSORS_CONF);
-              cpu = cpu % total_cpu_num + cpu / total_cpu_num;
-              cpu_set_t mask;
-              cpu_set_t get;
-              CPU_ZERO(&mask);
-              CPU_SET(*&cpu,&mask);
-              char tname[20];
-              sprintf(tname, "AIU t %d", cpu);
-              std::cout<<tname<<std::endl;
-              prctl(PR_SET_NAME, tname);
-              if(sched_setaffinity(0,sizeof(cpu_set_t),&mask)==-1)
-              {
-                  printf("warning: could not set CPU affinity, continuing...\n");
-              }
-                while (_run)
-                {
-                    high_resolution_clock::time_point pnow;
-                    high_resolution_clock::time_point now;
-                    vector<CallData*> my_queue;
-                    my_queue.reserve(_batch_size);
-                    {
-                      unique_lock<mutex> lock{ _lock };
-                      double d = 0;
-
-                      do{
-                        _task_cv.wait(lock, [this]{ return !_run || !_inference_data.empty(); }); // wait until _inference_data is not empty
-                        pnow = _inference_data.front()->now;
-                        now = high_resolution_clock::now();
-                        d = std::chrono::duration<double, std::nano>(now -pnow).count();
-                      }while(_inference_data.size()<_batch_size && d <wait);
-
-
-                      if (!_run && _inference_data.empty())
-                          return;
-                      
-                      my_queue.clear();
-                      
-                      int count = 0;
-                      int totalsize = _inference_data.size();
-                      while(count<_batch_size && count<totalsize){
-                          my_queue.push_back(_inference_data.front());
-                          _inference_data.pop();
-                          count ++;
-                      }
-
-                      lock.unlock();
-                      lock_guard<mutex> log_lock(_log_mutex);
-                      _log_stream << std::this_thread::get_id() << ",wake up," << my_queue.size() << "," << d << ",";
-                      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(pnow -originTime).count()) << ",";
-                      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(now -originTime).count()) << std::endl;
-                    }
-                    _idlThrNum--;
-                    if(my_queue.size() == 1){
-                      runInference_1(my_queue);
-                    }else{
-                      runInference(my_queue); 
-                    }
-                    _idlThrNum++;
-                }
-            }, size);
-            _idlThrNum++;
-        }
-    }
-
-    void runInference(vector<CallData*> calldata_list){
-
-      high_resolution_clock::time_point pnow = high_resolution_clock::now();
-
-      int64_t batchsize = calldata_list.size();
-      
-      int64_t rank = 3;
-      int64_t shape[3] = {7,batchsize,204};
-      int64_t totalsize = 7* batchsize * 204;
-      float *x1Data = (float*)calloc(totalsize, sizeof(float));
-
-      for(size_t i = 0; i < batchsize; i ++){
-        auto curr = calldata_list[i]->getRequestData();
-        for(size_t j = 0; j < 7; j++){
-          for(size_t k = 0; k< 204; k++){
-            x1Data[(j*batchsize+i)*204+k] = curr.data((j*204)+k);
-          }
-        }
-      }
-
-
-      // high_resolution_clock::time_point pnow = high_resolution_clock::now();
-
-      // OMTensor *x1 = omTensorCreate(x1Data, shape, rank, ONNX_TYPE_FLOAT);
-      // OMTensor *list[1] = {x1};
-      // OMTensorList *input = omTensorListCreate(list,1);
-      // OMTensorList *outputList = run_main_graph(input);
-
-      OMTensor *y = modelLoder.RunModel(x1Data, shape, rank, ONNX_TYPE_FLOAT);; //omTensorListGetOmtByIndex(outputList,0);
-      float *prediction = (float *)omTensorGetDataPtr(y);
-      int64_t *output_shape = omTensorGetShape(y);
-      int resultsize = 1;
-      for(int i = 0; i < omTensorGetRank(y); i++){
-        resultsize *= output_shape[i];
-      }
-
-      float* singleResult = (float*)calloc(batchsize*7, sizeof(float));
-
-      // chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-
-      // float singleResult[_batch_size*7] = {0};
-      float* start = singleResult;
-      for(size_t i = 0;i < batchsize; i++ ){
-        // if(i<calldata_list.size()){
-          for(size_t j = 0; j < 7; j++){
-            start[j] = prediction[j*batchsize+i];
-          }
-          calldata_list[i]->sendBack(start,7);
-        // }
-        start += 7;
-      }
-
-      high_resolution_clock::time_point now = high_resolution_clock::now();
-      double d = std::chrono::duration<double, std::nano>(now -pnow).count();
-
-      free(singleResult);
-      free(x1Data);
-      // free(prediction);
-      // omTensorDestroy(x1);
-      omTensorDestroy(y);
-
-
-
-      lock_guard<mutex> lock(_log_mutex);
-
-      //thread id, action, size, dur, start time, now time
-      _log_stream << std::this_thread::get_id() << ",inference," << batchsize << "," << d << ",";
-      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(pnow -originTime).count()) << ",";
-      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(now -originTime).count()) << std::endl;
-
+      return model;
 
     }
 
-    void runInference_1(vector<CallData*> calldata_list){
-
-      high_resolution_clock::time_point pnow = high_resolution_clock::now();
-
-      auto curr = calldata_list[0]->getRequestData();
-      int64_t rank = curr.shape().size();
-      int64_t* shape = curr.mutable_shape()->mutable_data();
-      float *x1Data = curr.mutable_data()->mutable_data();
-
-      int64_t batchsize = calldata_list.size();
-
-
-      OMTensor *y = modelLoder.RunModel(x1Data, shape, rank, ONNX_TYPE_FLOAT);; //omTensorListGetOmtByIndex(outputList,0);
-      float *prediction = (float *)omTensorGetDataPtr(y);
-      int64_t *output_shape = omTensorGetShape(y);
-      int resultsize = 1;
-      for(int i = 0; i < omTensorGetRank(y); i++){
-        resultsize *= output_shape[i];
-      }
-
-      calldata_list[0]->sendBack(prediction,resultsize);
-
-
-      high_resolution_clock::time_point now = high_resolution_clock::now();
-      double d = std::chrono::duration<double, std::nano>(now -pnow).count();
-
-      // free(prediction);
-      // omTensorDestroy(x1);
-      omTensorDestroy(y);
-
-      lock_guard<mutex> lock(_log_mutex);
-
-      //thread id, action, size, dur, start time, now time
-      _log_stream << std::this_thread::get_id() << ",inference," << batchsize << "," << std::to_string(d) << ",";
-      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(pnow -originTime).count()) << ",";
-      _log_stream << std::to_string(std::chrono::duration<double, std::nano>(now -originTime).count()) << std::endl;
-
-
-    }    
-
+    std::vector<DLCModel*> models_;
+    AIUThreadPool tpool_;
+    std::thread checkBatchingThread_;
+    std::mutex lock_;
+    int run_ = 1;
+    int batch_size_;
+    int wait_time_;
 };
 
+
+class ServerImpl final {
+ public:
+  ~ServerImpl() {
+    server_->Shutdown();
+    // Always shutdown the completion queue after the server.
+    cq_->Shutdown();
+  }
+
+  ServerImpl(int batch_size, int threadNum_, int wait):modelManager_(batch_size, threadNum_, wait){
+  }
+
+  void Run();
+
+ private:
+  void HandleRpcs(int i);
+
+  std::shared_ptr<ServerCompletionQueue> cq_;
+  InferenceService::AsyncService service_;
+  // AIUThreadPool tpool;
+  DLCModelManager modelManager_;
+  std::shared_ptr<Server> server_;
+  vector<std::thread> async_threads;
+  mutex  mtx_;
+};
 
 
 #endif  

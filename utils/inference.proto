@@ -4,18 +4,19 @@ package inference;
 
 service InferenceService {
   rpc Inference (InferenceRequest) returns (InferenceResponse) {};
-  rpc End (EndRequest) returns (EndResponse){};
+  rpc PrintStatistics (PrintStatisticsRequest) returns (PrintStatisticsResponse){};
 }
 message InferenceRequest {
   repeated int64 shape = 1;
   repeated float data = 2;
+  string model_name = 3;
 }
 message InferenceResponse{
   repeated float data = 1;
 }
-message EndRequest {
+message PrintStatisticsRequest {
 
 }
-message EndResponse {
+message PrintStatisticsResponse {
   
 }

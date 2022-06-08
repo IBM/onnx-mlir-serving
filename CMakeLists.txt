@@ -92,10 +92,11 @@ target_link_libraries(AIU_async_client
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
 
-add_executable(AIU_async_server "grpc_server/AIU_async_server.cc")              
+add_executable(AIU_async_server "grpc_server/AIU_async_server.cc" "grpc_server/AIUThreadPool.cc")              
 target_link_libraries(AIU_async_server
               ${CRuntime}
               hw_grpc_proto
+              onnx_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})

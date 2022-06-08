@@ -40,8 +40,8 @@ using grpc::Status;
 using inference::InferenceService;
 using inference::InferenceResponse;
 using inference::InferenceRequest;
-using inference::EndRequest;
-using inference::EndResponse;
+using inference::PrintStatisticsRequest;
+using inference::PrintStatisticsResponse;
 
 
 DLCModelLoader modelLoder;
@@ -143,14 +143,14 @@ class InferenceClient {
   explicit InferenceClient(std::shared_ptr<Channel> channel)
       : stub_(InferenceService::NewStub(channel)) {}
 
-  void end(){
-    EndRequest request;
-    EndResponse response;
+  void printStatistics(){
+    PrintStatisticsRequest request;
+    PrintStatisticsResponse response;
     ClientContext context;
     CompletionQueue cq;
     Status status;
-    std::unique_ptr<ClientAsyncResponseReader<EndResponse> > rpc(
-            stub_->PrepareAsyncEnd(&context, request, &cq));
+    std::unique_ptr<ClientAsyncResponseReader<PrintStatisticsResponse> > rpc(
+            stub_->PrepareAsyncPrintStatistics(&context, request, &cq));
     rpc->StartCall();
     rpc->Finish(&response, &status, (void*)1);
     void* got_tag;
