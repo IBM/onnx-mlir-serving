@@ -9,9 +9,14 @@ project(AIU_grpc)
 # include(../cmake/common.cmake)
 # Provide grpc installation directory
 if(DEFINED GRPC_DIR)
+  message(STATUS "ONNX_COMPILER: ${ONNX_COMPILER}")
+else()
+  message(FATAL_ERROR "Provide ONNX_COMPILER pls")
+endif()
+if(DEFINED GRPC_DIR)
   message(STATUS "GPRC_DIR: ${GRPC_DIR}")
 else()
-  message(FATAL_ERROR "Provide GPRC_DIR pls:${GRPC_DIR}")
+  message(FATAL_ERROR "Provide GPRC_DIR pls")
 endif()
 if(DEFINED ONNX_COMPILER_BUILD_DIR)
   message(STATUS "ONNX_COMPILER_BUILD_DIR: ${ONNX_COMPILER_BUILD_DIR}")
@@ -101,7 +106,8 @@ target_link_libraries(AIU_async_server
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(AIU_async_server PRIVATE
-              ${ONNX_COMPILER_BUILD_DIR}/include)
+              ${ONNX_COMPILER_BUILD_DIR}/include 
+              ${ONNX_COMPILER_DIR}/include)
 
 
 
