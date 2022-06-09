@@ -54,4 +54,10 @@ example:
 ./app /aivol/inputs/ccf1_inputs 1 1000 0 1000
 ```
 
+# Docker-Build
 
+1. Build Base
+```
+docker build -f Dockerfile.base -t onnx/aigrpc-base .
+```
+2. Build AI GPRC Server and Client
