@@ -61,3 +61,6 @@ example:
 docker build -f Dockerfile.base -t onnx/aigrpc-base .
 ```
 2. Build AI GPRC Server and Client
+```
+docker build -t onnx/aigrpc-server .
+```
