@@ -109,7 +109,7 @@ target_include_directories(AIU_async_server PRIVATE
               ${ONNX_COMPILER_BUILD_DIR}/include 
               ${ONNX_COMPILER_DIR}/include)
 
-
+add_subdirectory(tests ${CMAKE_CURRENT_BINARY_DIR}/tests EXCLUDE_FROM_ALL)
 
 # Targets greeter_[async_](client|server)
 # foreach(_target
