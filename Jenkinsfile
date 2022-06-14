@@ -11,6 +11,11 @@ pipeline {
                 sh "docker build -t onnx/aigrpc-server ."
             }
         }
+        stage('utest') {
+            steps {
+                sh "docker run onnx/aigrpc-server -c 'cd /workdir/aigrpc-server/cmake/build;grpc-test'"
+            }
+        }
     }
     post {
         success {

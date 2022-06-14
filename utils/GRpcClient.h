@@ -43,8 +43,8 @@ class Dataset {
     float tmp;
     char buffer[4];
     while(fp.read(buffer, 4)){
-      // if(BIGENDIAN)
-      std::reverse(buffer, buffer + 4);
+      if(BIGENDIAN)
+        std::reverse(buffer, buffer + 4);
       tmp = (*(float*)buffer);
       imageData.push_back(tmp);
     }
