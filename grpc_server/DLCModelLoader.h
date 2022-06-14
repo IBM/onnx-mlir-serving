@@ -37,10 +37,10 @@ class DLCModelLoader
       dll_run_main_graph = (OMTensorList * (*)(OMTensorList *))
       dlsym(handle, "run_main_graph");
       assert(!dlerror() && "failed to load entry point");
-      dll_omInputSignature = (const char *(*)())dlsym(handle, "omInputSignature");
-      assert(!dlerror() && "failed to load omInputSignature");
-      dll_omOutputSignature = (const char *(*)())dlsym(handle, "omOutputSignature");
-      assert(!dlerror() && "failed to load omOutputSignature");
+      // dll_omInputSignature = (const char *(*)())dlsym(handle, "omInputSignature");
+      // assert(!dlerror() && "failed to load omInputSignature");
+      // dll_omOutputSignature = (const char *(*)())dlsym(handle, "omOutputSignature");
+      // assert(!dlerror() && "failed to load omOutputSignature");
       dll_omTensorCreate =
           (OMTensor * (*)(void *, int64_t *, int64_t, OM_DATA_TYPE))
               dlsym(handle, "omTensorCreate");
