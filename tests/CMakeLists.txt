@@ -26,13 +26,13 @@ get_filename_component(utils_path "${utils}" PATH)
 
 message(STATUS "hellohello_${utils_path}")
 
-add_executable(base example.cc)
-target_link_libraries(base 
+add_executable(grpc-test grpc-test.cc)
+target_link_libraries(grpc-test 
     gtest_main 
     gtest              
     hw_grpc_proto
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(base PRIVATE ${utils_path})
-add_test(NAME base_test COMMAND base)
+target_include_directories(grpc-test PRIVATE ${utils_path})
+add_test(NAME grpc-test COMMAND grpc-test)
