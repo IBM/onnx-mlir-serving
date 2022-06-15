@@ -21,13 +21,3 @@ target_link_libraries(grpc-test
     ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(grpc-test PRIVATE ${utils_path})
 add_test(NAME grpc-test COMMAND grpc-test)
-
-add_executable(single single.cc)
-target_link_libraries(single             
-    hw_grpc_proto
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(single PRIVATE ${utils_path})
-# add_test(NAME base_test COMMAND base)
-
