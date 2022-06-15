@@ -30,3 +30,4 @@ target_link_libraries(single
     ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(single PRIVATE ${utils_path})
 # add_test(NAME base_test COMMAND base)
+

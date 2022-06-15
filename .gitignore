@@ -1,2 +1,4 @@
-async/cmake/*
-
+cmake/*
+build/
+Jenkinsfile
+LICENSE
