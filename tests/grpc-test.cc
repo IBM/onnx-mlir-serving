@@ -1,7 +1,7 @@
 #include <limits.h>
 #include <algorithm>
 #include "gtest/gtest.h"
-#include "utils/GRpcClient.h"
+#include "utils/grpc_client.h"
 #include <chrono>
 #include <thread>
 using namespace std::chrono_literals;
@@ -36,12 +36,12 @@ class ServerTest : public testing::Test {
     system("wait 5");
     Dataset ds("./models/mnist");
     InferenceClient client(grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
-    std::vector<float> out_vector = client.Inference(&ds, 0);
+    std::vector<float> out_vector = client.Inference(ds.getImageData(0), ds.shape, ds.rank, ds.modelName);
     for (auto value:out_vector)
         std::cout << value << std::endl;
     auto maxPosition = max_element(out_vector.begin(),out_vector.end()) - out_vector.begin(); 
     EXPECT_EQ(4, maxPosition);
-    out_vector = client.Inference(&ds, 0);
+    out_vector = client.Inference(ds.getImageData(0), ds.shape, ds.rank, ds.modelName);
     for (auto value:out_vector)
         std::cout << value << std::endl;
     maxPosition = max_element(out_vector.begin(),out_vector.end()) - out_vector.begin(); 

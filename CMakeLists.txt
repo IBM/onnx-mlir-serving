@@ -97,13 +97,13 @@ find_library(mlperf_loadgen
 	PATHS ${LOADGEN_LIB_DIR})
 
 
-add_executable(AIU_async_client "grpc_client/aiu_async_client.cc")
-target_link_libraries(AIU_async_client 
+add_executable(Bench_perf "grpc_client/bench_perf.cc")
+target_link_libraries(Bench_perf 
               hw_grpc_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(AIU_async_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Bench_perf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc")              
 target_link_libraries(AIU_async_server
@@ -114,51 +114,6 @@ target_link_libraries(AIU_async_server
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(AIU_async_server PRIVATE
-              ${ONNX_COMPILER_BUILD_DIR}/include 
               ${ONNX_COMPILER_DIR}/include)
 
 add_subdirectory(tests ${CMAKE_CURRENT_BINARY_DIR}/tests EXCLUDE_FROM_ALL)
-
-# Targets greeter_[async_](client|server)
-# foreach(_target
-#   AIU_async_client)
-#   add_executable(${_target} "${_target}.cc")
-#   target_link_libraries(${_target}
-#     hw_grpc_proto
-#     ${_REFLECTION}
-#     ${_GRPC_GRPCPP}
-#     ${_PROTOBUF_LIBPROTOBUF})
-# endforeach()
-
-# foreach(_target
-#   AIU_async_server)
-#   add_executable(${_target} "${_target}.cc")
-#   target_link_libraries(${_target}
-#     # ${zdnn}
-#     # ${CMAKE_CURRENT_BINARY_DIR}/library.so
-#     ${CRuntime}
-#     hw_grpc_proto
-#     ${_REFLECTION}
-#     ${_GRPC_GRPCPP}
-#     ${_PROTOBUF_LIBPROTOBUF})
-#   target_include_directories(${_target} PRIVATE
-#     ${ONNX_COMPILER_BUILD_DIR}/include)
-# endforeach()
-
-
-# foreach(_target
-#   sut single multip)
-#   add_executable(${_target} "${_target}.cc")
-#   target_link_libraries(${_target}
-#     # ${zdnn}
-#     # ${CMAKE_CURRENT_BINARY_DIR}/library.so
-#     ${CRuntime}
-#     ${mlperf_loadgen}
-#     hw_grpc_proto
-#     ${_REFLECTION}
-#     ${_GRPC_GRPCPP}
-#     ${_PROTOBUF_LIBPROTOBUF})
-#   target_include_directories(${_target} PRIVATE
-#     ${ONNX_COMPILER_BUILD_DIR}/include
-#     ${LOADGEN_DIR})
-# endforeach()

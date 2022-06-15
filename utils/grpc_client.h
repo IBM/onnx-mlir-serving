@@ -132,7 +132,7 @@ class InferenceClient {
     std::cout << "end done"<<std::endl;
   }      
 
-  std::vector<float> Inference(std::vector<float> &input_data, std::int64_t * shape, std::int64_t rank, std::string model_name){
+  std::vector<float> Inference(std::vector<float> input_data, std::int64_t * shape, std::int64_t rank, std::string model_name){
 
     InferenceRequest request;
     request.mutable_data()->Add(input_data.begin(), input_data.end());
