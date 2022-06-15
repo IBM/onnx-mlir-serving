@@ -19,7 +19,7 @@ pipeline {
     }
     post {
         always { 
-          junit './results/'   
+          junit './results/**'   
         }
         success {
             echo 'This will run only if successful'
