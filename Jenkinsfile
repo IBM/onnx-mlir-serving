@@ -13,7 +13,7 @@ pipeline {
         }
         stage('utest') {
             steps {
-                sh "docker run onnx/aigrpc-server -c 'cd /workdir/aigrpc-server/cmake/build;grpc-test'"
+                sh "docker run onnx/aigrpc-server -c 'cd /workdir/aigrpc-server/cmake/build;./grpc-test --gtestout=xml:utest-grpc.xml'"
             }
         }
     }
