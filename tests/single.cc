@@ -1,4 +1,4 @@
-#include "utils/GRpcClient.h"
+#include "utils/grpc_client.h"
 
 // ./single /aivol/inputs/ccf1_inputs 
 int main(int argc, char** argv) {

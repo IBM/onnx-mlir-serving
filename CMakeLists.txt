@@ -97,14 +97,15 @@ find_library(mlperf_loadgen
 	PATHS ${LOADGEN_LIB_DIR})
 
 
-add_executable(AIU_async_client "grpc_client/AIU_async_client.cc")
+add_executable(AIU_async_client "grpc_client/aiu_async_client.cc")
 target_link_libraries(AIU_async_client 
               hw_grpc_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
+target_include_directories(AIU_async_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(AIU_async_server "grpc_server/AIU_async_server.cc" "grpc_server/AIUThreadPool.cc")              
+add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc")              
 target_link_libraries(AIU_async_server
               ${CRuntime}
               hw_grpc_proto

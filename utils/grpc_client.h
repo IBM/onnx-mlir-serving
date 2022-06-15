@@ -82,8 +82,6 @@ class Dataset {
 
     fp2.close();
 
-    std::cout << modelName << " " << rank << std::endl;
-
     return 0;
   }
   void loadImageData(size_t index){
@@ -134,22 +132,18 @@ class InferenceClient {
     std::cout << "end done"<<std::endl;
   }      
 
-  // void Inference(std::vector<float> &input_data, int64_t* shape, int64_t rank) {
-  std::vector<float> Inference(Dataset *ds, size_t index){
-
-    auto input_data = ds->getImageData(index);
+  std::vector<float> Inference(std::vector<float> &input_data, std::int64_t * shape, std::int64_t rank, std::string model_name){
 
     InferenceRequest request;
     request.mutable_data()->Add(input_data.begin(), input_data.end());
-    request.mutable_shape()->Add(ds->shape, ds->shape+ds->rank);
-    request.set_model_name(ds->modelName);
-
+    request.mutable_shape()->Add(shape, shape+rank);
+    request.set_model_name(model_name);
+        
     InferenceResponse reply;
     ClientContext context;
     CompletionQueue cq;
     Status status;
     std::unique_ptr<ClientAsyncResponseReader<InferenceResponse>> response_reader(stub_->PrepareAsyncInference(&context, request, &cq));
-
 
     response_reader->StartCall();
     response_reader->Finish(&reply, &status, (void*)1);

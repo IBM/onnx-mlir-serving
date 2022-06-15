@@ -22,7 +22,7 @@
 // #include <thread>
 // #include <pthread.h>
 // #include "inference.grpc.pb.h"
-#include "DLCModelLoader.h"
+#include "model_loader.h"
 
 // using inference::InferenceRequest;
 
