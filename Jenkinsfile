@@ -6,9 +6,14 @@ pipeline {
                 sh "docker build -f Dockerfile.base -t onnx/aigrpc-base ."
             }
         }
-        stage('Build Dev Image') {
+        stage('Build Server Image') {
             steps {
                 sh "docker build -t onnx/aigrpc-server ."
+            }
+        }
+        stage('Build Debug Image') {
+            steps {
+                sh "docker build -f Dockerfile.debug -t onnx/aigrpc-debug  ."
             }
         }
         stage('utest') {
