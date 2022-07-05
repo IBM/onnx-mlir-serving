@@ -1,6 +1,6 @@
 FROM onnxmlirczar/onnx-mlir-dev
 RUN apt-get update
-RUN apt-get install -y build-essential autoconf libtool pkg-config cmake git
+RUN apt-get install -y build-essential autoconf libtool pkg-config cmake git maven
 RUN git clone -b v1.46.3 https://github.com/grpc/grpc
 RUN cd grpc;git submodule update --init
 RUN cd grpc;mkdir -p cmake/build;cd cmake/build;cmake ../..;

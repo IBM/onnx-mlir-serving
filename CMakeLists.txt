@@ -1,5 +1,6 @@
 
 cmake_minimum_required(VERSION 3.14)
+set(CMAKE_DEBUG_POSTFIX d)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -W -Wall -pthread")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -105,7 +106,8 @@ target_link_libraries(Bench_perf
               ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(Bench_perf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc")              
+add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc")  
+set_target_properties(AIU_async_server PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})            
 target_link_libraries(AIU_async_server
               ${CRuntime}
               hw_grpc_proto

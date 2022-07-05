@@ -14,4 +14,5 @@ RUN cd aigrpc-server/cmake/build;make -j8
 RUN cp googletest/lib/* /usr/lib
 RUN cd aigrpc-server/cmake/build/tests;make
 RUN cd aigrpc-server/tests; for dir in models/*/; do echo $dir; ls $dir/model.onnx|xargs onnx-mlir; done; cp -r models ../cmake/build/; cp ../cmake/build/tests/grpc-test ../cmake/build
+RUN cd aigrpc-server/java;mvn verify
 ENTRYPOINT ["/bin/bash"]
