@@ -59,10 +59,7 @@ class AIUThreadPool
 
   public:
     AIUThreadPool(unsigned short size){ 
-      std::cout<<"create pool"<<std::endl;
-      // int num=sysconf(_SC_NPROCESSORS_CONF) / 12;
       AddThread(size);
-      std::cout<<"create pool2"<<std::endl;
     }
     ~AIUThreadPool()
     {

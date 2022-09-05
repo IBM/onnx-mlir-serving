@@ -18,10 +18,10 @@ if(DEFINED GRPC_DIR)
 else()
   message(FATAL_ERROR "Provide GPRC_DIR pls")
 endif()
-if(DEFINED ONNX_COMPILER_BUILD_DIR)
-  message(STATUS "ONNX_COMPILER_BUILD_DIR: ${ONNX_COMPILER_BUILD_DIR}")
+if(DEFINED ONNX_COMPILER_DIR)
+  message(STATUS "ONNX_COMPILER_DIR: ${ONNX_COMPILER_DIR}")
 else()
-  message(FATAL_ERROR "Provide ONNX_COMPILER_BUILD_DIR pls:${ONNX_COMPILER_BUILD_DIR}")
+  message(FATAL_ERROR "Provide ONNX_COMPILER_DIR pls:${ONNX_COMPILER_DIR}")
 endif()
 if(DEFINED LOADGEN_DIR)
   message(STATUS "LOADGEN_DIR: ${LOADGEN_DIR}")
@@ -86,7 +86,7 @@ target_link_libraries(hw_grpc_proto
 # For dlc
 find_library(CRuntime
   NAMES cruntime
-  PATHS ${ONNX_COMPILER_BUILD_DIR}/lib) 
+  PATHS ${ONNX_COMPILER_DIR}/lib) 
 message(STATUS "CRuntime: ${CRuntime}")
 
 
@@ -105,11 +105,18 @@ target_link_libraries(Bench_perf
               ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(Bench_perf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc")              
+add_executable(Client "grpc_client/main.cc")
+target_link_libraries(Client 
+              hw_grpc_proto
+              ${_REFLECTION}
+              ${_GRPC_GRPCPP}
+              ${_PROTOBUF_LIBPROTOBUF})
+target_include_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc" "grpc_server/model_loader.cc")              
 target_link_libraries(AIU_async_server
               ${CRuntime}
               hw_grpc_proto
-              onnx_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
