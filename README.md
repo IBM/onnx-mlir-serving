@@ -25,7 +25,7 @@ libcruntime.a
 ## Build:
 
 ```
-cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_BUILD_DIR:STRING${ONNX_MLIR_BUILD_DIR} -DLOADGEN_DIR:STRING=~/code/aiu/inference/loadgen -DCMAKE_PREFIX_PATH=/aiu/grpc/cmake/install ../..
+cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_BUILD_DIR:STRING${ONNX_MLIR_BUILD_DIR} -DCMAKE_PREFIX_PATH=/aiu/grpc/cmake/install ../..
 make -j
 ```
 

@@ -3,7 +3,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -W -Wall -pthread")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(AIU_grpc_test)
+project(grpc_server_test)
 
 
 get_filename_component(utils "../utils" ABSOLUTE)
@@ -21,13 +21,3 @@ target_link_libraries(grpc-test
     ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(grpc-test PRIVATE ${utils_path})
 add_test(NAME grpc-test COMMAND grpc-test)
-
-add_executable(single single.cc)
-target_link_libraries(single             
-    hw_grpc_proto
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(single PRIVATE ${utils_path})
-# add_test(NAME base_test COMMAND base)
-

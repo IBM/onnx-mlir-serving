@@ -1,9 +1,9 @@
-#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
-#include "aiu_async_server.h"
+// #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
+#include "grpc_server.h"
 #include <ctime>
 
 std::chrono::high_resolution_clock::time_point  originTime = std::chrono::high_resolution_clock::now();
-DLCModelLoader modelLoder;
+OnnxMlirModelLoader modelLoder;
 
 
 void CallData::Proceed(void *modelManager){
@@ -26,12 +26,12 @@ void CallData::Proceed(void *modelManager){
     switch (s_type_){
       case CallData::inference:
         new CallData(service_, cq_,CallData::inference);
-        static_cast<DLCModelManager*>(modelManager)->AddModel(this);
+        static_cast<OnnxMlirModelManager*>(modelManager)->AddModel(this);
         now = high_resolution_clock::now();
         break;
       case CallData::printStatistics:
         new CallData(service_, cq_,CallData::printStatistics);
-        static_cast<DLCModelManager*>(modelManager)->PrintLogs();
+        static_cast<OnnxMlirModelManager*>(modelManager)->PrintLogs();
         status_ = FINISH;
         printStatisticsResponder_.Finish(printStatisticsReply_, Status::OK, this);
         break;
@@ -82,9 +82,15 @@ void ServerImpl::HandleRpcs(int i){
     }  
 }
 
+int printHelp(){
+  std::cout << "usage: server [options]" << std::endl;
+  std::cout << "-w arg     " << "wait time for batch size" << std::endl;
+  std::cout << "-b arg     " << "server side batch size" << std::endl;
+  std::cout << "-n arg     " << "thread number" << std::endl;
+}
 
 int main(int argc, char** argv) {
-  // std::AIUThreadPool tpool(5);
+  // std::AIInfrenceThreadPool tpool(5);
   int wait = 0; 
   int batch_size = 1;
   int threadNum = 1;
@@ -93,6 +99,10 @@ int main(int argc, char** argv) {
 
   while(argIndex < argc){
     char *curArg = argv[argIndex];
+    if(strcmp(curArg, "-h") == 0){
+      printHelp();
+      return 0;
+    }
     if(strcmp(curArg, "-w") == 0){
       wait = std::stoi(argv[argIndex + 1]);
       argIndex = argIndex + 2;
@@ -108,27 +118,13 @@ int main(int argc, char** argv) {
       argIndex = argIndex + 2;
       continue;
     }
-    if(argIndex == 1){
-      wait = std::stoi(argv[1]);
-      argIndex ++;
-      continue;
-    }
-    if(argIndex == 2){
-      batch_size = std::stoi(argv[2]);
-      argIndex ++;
-      continue;
-    }       
-    if(argIndex == 3){
-      threadNum = std::stoi(argv[3]);
-      argIndex ++;
-      continue;
-    }          
+    printHelp();
+    return 0;       
   }
 
-
-  std::cout << "wait time " << wait << " ns" << std::endl;
-  std::cout << "batch max size " << batch_size << std::endl;
-  std::cout << "thread number " << threadNum << std::endl;
+  // std::cout << "wait time " << wait << " ns" << std::endl;
+  // std::cout << "batch max size " << batch_size << std::endl;
+  // std::cout << "thread number " << threadNum << std::endl;
   ServerImpl server(batch_size, threadNum, wait);
   server.Run();
 

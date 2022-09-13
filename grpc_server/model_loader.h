@@ -1,7 +1,7 @@
 #pragma once
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#ifndef DLC_MODEL_LOADER_H
-#define DLC_MODEL_LOADER_H
+#ifndef ONNXMLIR_MODEL_LOADER_H
+#define ONNXMLIR_MODEL_LOADER_H
 #include <dlfcn.h>
 #include <queue>
 #include <thread>
@@ -29,7 +29,7 @@ public:
   high_resolution_clock::time_point now;
 };
 
-class DLCModelLoader
+class OnnxMlirModelLoader
 {
 public:
   bool LoadModel(char *model_path);
@@ -58,10 +58,10 @@ typedef struct logInfo_
   size_t inference_size;
 } LogInfo;
 
-class DLCModel
+class OnnxMlirModel
 {
 public:
-  DLCModel(const char *_model_name);
+  OnnxMlirModel(const char *_model_name);
 
   void ReadConfigFile(char *fileName);
 
@@ -81,7 +81,7 @@ public:
   Task Perpare_and_run(int64_t batchsize_);
 
   char model_name[50];
-  DLCModelLoader loader;
+  OnnxMlirModelLoader loader;
   std::queue<AbstractCallData *> inference_data;
   int max_batchsize = -1;
   int batch_dim = -1;

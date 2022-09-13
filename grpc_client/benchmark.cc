@@ -73,12 +73,14 @@ class MultiClientSimlate{
             int index = count % imageSize;
 
             if(!isStartRecord){
+              // warn up
               double d = std::chrono::duration<double, std::milli>(high_resolution_clock::now() - startTime).count();
               if(d > _recordStart){
                 isStartRecord = true;
               }
                 
             }else{
+              // check end time
               double d = std::chrono::duration<double, std::milli>(high_resolution_clock::now() - startTime).count();
               if(d > _recordEnd){
                 isEndRecord = true;
@@ -87,6 +89,7 @@ class MultiClientSimlate{
             }
               
             if(!isRun){
+              // wait 5s to make sure all thread are ready
               double d = std::chrono::duration<double, std::milli>(high_resolution_clock::now() - startTime).count();
               if(d > 5000){
                 isRun = true;
@@ -127,7 +130,7 @@ class MultiClientSimlate{
     }
 };
 
-// ./AIU_async_client /aivol/inputs/ccf1_inputs 1 1
+// ./Benchmark /aivol/inputs/ccf1_inputs 1 1
 int main(int argc, char** argv) {
 
   Dataset ds(argv[1]);

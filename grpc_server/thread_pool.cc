@@ -1,18 +1,19 @@
-#include "aiu_thread_pool.h"
+#include "thread_pool.h"
 
-
-void AIUThreadPool::AddTask(Task task){
+void AIInfrenceThreadPool::AddTask(Task task)
+{
   lock_guard<mutex> lock(lock_);
   tasks_.push(task);
   task_cv_.notify_one();
 }
 
-void AIUThreadPool::AddThread(unsigned short size)
+void AIInfrenceThreadPool::AddThread(unsigned short size)
 {
-  for (; pool_.size() < THREADPOOL_MAX_NUM && size > 0; --size)
+  //TODO while 
+  int size = min(pool_.size(), THREADPOOL_MAX_NUM);
+  while(size > 0)
   {
-    pool_.emplace_back([this](unsigned short cpuindex)
-                       { 
+    pool_.emplace_back([this](unsigned short cpuindex){ 
       int cpu = (cpuindex-1) * 12;
       int total_cpu_num = sysconf(_SC_NPROCESSORS_CONF);
       cpu = cpu % total_cpu_num + cpu / total_cpu_num;
@@ -22,7 +23,7 @@ void AIUThreadPool::AddThread(unsigned short size)
       CPU_SET(*&cpu,&mask);
       char tname[20];
       sprintf(tname, "AIU t %d", cpu);
-      std::cout<<tname<<std::endl;
+      // // std::cout<<tname<<std::endl;
       prctl(PR_SET_NAME, tname);
       if(sched_setaffinity(0,sizeof(cpu_set_t),&mask)==-1)
       {
@@ -47,12 +48,12 @@ void AIUThreadPool::AddThread(unsigned short size)
         task(to_log);
         idl_thread_num_++;
       } }, size);
-      
+    size--;
     idl_thread_num_++;
   }
 }
 
-void AIUThreadPool::PrintLogs()
+void AIInfrenceThreadPool::PrintLogs()
 {
   std::cout << "print log " << std::endl;
   std::cout << log_stream_.str() << std::endl;

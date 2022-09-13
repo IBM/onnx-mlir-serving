@@ -1,13 +1,13 @@
 
 cmake_minimum_required(VERSION 3.14)
+set(CMAKE_DEBUG_POSTFIX d)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -W -Wall -pthread")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(AIU_grpc)
+project(onnx-mlir-grpc-serving)
 
-# include(../cmake/common.cmake)
-# Provide grpc installation directory
+
 if(DEFINED GRPC_DIR)
   message(STATUS "ONNX_COMPILER: ${ONNX_COMPILER}")
 else()
@@ -23,11 +23,7 @@ if(DEFINED ONNX_COMPILER_DIR)
 else()
   message(FATAL_ERROR "Provide ONNX_COMPILER_DIR pls:${ONNX_COMPILER_DIR}")
 endif()
-if(DEFINED LOADGEN_DIR)
-  message(STATUS "LOADGEN_DIR: ${LOADGEN_DIR}")
-else()
-  message(FATAL_ERROR "Provide LOADGEN_DIR pls:${LOADGEN_DIR}")
-endif()
+
 
 message("-- CMAKE_HOST_SYSTEM_PROCESSOR: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "s390x" )
@@ -83,27 +79,21 @@ target_link_libraries(hw_grpc_proto
   ${_PROTOBUF_LIBPROTOBUF}
   )
 
-# For dlc
+# For onnx-mlir
 find_library(CRuntime
   NAMES cruntime
   PATHS ${ONNX_COMPILER_DIR}/lib) 
 message(STATUS "CRuntime: ${CRuntime}")
 
 
-# for loadgen
-set(LOADGEN_LIB_DIR ${LOADGEN_DIR}/build)
-find_library(mlperf_loadgen
-	NAMES mlperf_loadgen
-	PATHS ${LOADGEN_LIB_DIR})
 
-
-add_executable(Bench_perf "grpc_client/bench_perf.cc")
-target_link_libraries(Bench_perf 
+add_executable(Benchmark "grpc_client/benchmark.cc")
+target_link_libraries(Benchmark 
               hw_grpc_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(Bench_perf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(Client "grpc_client/main.cc")
 target_link_libraries(Client 
@@ -113,14 +103,14 @@ target_link_libraries(Client
               ${_PROTOBUF_LIBPROTOBUF})
 target_include_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(AIU_async_server "grpc_server/aiu_async_server.cc" "grpc_server/aiu_thread_pool.cc" "grpc_server/model_loader.cc")              
-target_link_libraries(AIU_async_server
+add_executable(grpc_server "grpc_server/grpc_server.cc" "grpc_server/thread_pool.cc" "grpc_server/model_loader.cc")        
+target_link_libraries(grpc_server
               ${CRuntime}
               hw_grpc_proto
               ${_REFLECTION}
               ${_GRPC_GRPCPP}
               ${_PROTOBUF_LIBPROTOBUF})
-target_include_directories(AIU_async_server PRIVATE
+target_include_directories(grpc_server PRIVATE
               ${ONNX_COMPILER_DIR}/include)
 
 add_subdirectory(tests ${CMAKE_CURRENT_BINARY_DIR}/tests EXCLUDE_FROM_ALL)

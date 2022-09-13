@@ -12,16 +12,16 @@ class ServerTest : public testing::Test {
     // Remember that SetUp() is run immediately before a test starts.
     // This is a good place to record the start time.
     void SetUp() override { 
-      std::cout << "Start aiu server with simplest way" << std::endl;
-      system("bash -c './AIU_async_server 0 1 1' &");
+      std::cout << "Start server with simplest way" << std::endl;
+      system("bash -c './grpc_server 0 1 1' &");
       std::this_thread::sleep_for(2s);
       
     }
     // TearDown() is invoked immediately after a test finishes.  Here we
     // check if the test was too slow.
     void TearDown() override {
-      std::cout << "Stop aiu server" << std::endl;
-      auto a = system("pkill -e AIU");
+      std::cout << "Stop server" << std::endl;
+      auto a = system("pkill -e grpc_server");
     } 
       
 

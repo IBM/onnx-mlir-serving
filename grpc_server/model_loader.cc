@@ -1,6 +1,6 @@
 #include "model_loader.h"
 
-bool DLCModelLoader::LoadModel(char *model_path)
+bool OnnxMlirModelLoader::LoadModel(char *model_path)
 {
   void *handle = dlopen(model_path, RTLD_LAZY);
   if (!handle)
@@ -31,7 +31,7 @@ bool DLCModelLoader::LoadModel(char *model_path)
   return true;
 }
 
-OMTensor *DLCModelLoader::RunModel(void *x1Data, int64_t *shape, int64_t rank, OM_DATA_TYPE type)
+OMTensor *OnnxMlirModelLoader::RunModel(void *x1Data, int64_t *shape, int64_t rank, OM_DATA_TYPE type)
 {
   OMTensor *x1 = dll_omTensorCreate(x1Data, shape, rank, type);
   OMTensor *list[1] = {x1};
@@ -43,7 +43,7 @@ OMTensor *DLCModelLoader::RunModel(void *x1Data, int64_t *shape, int64_t rank, O
   return y;
 }
 
-DLCModel::DLCModel(const char *_model_name)
+OnnxMlirModel::OnnxMlirModel(const char *_model_name)
 {
   max_batchsize = -1;
 
@@ -62,7 +62,7 @@ DLCModel::DLCModel(const char *_model_name)
 
 }
 
-void DLCModel::ReadConfigFile(char *fileName)
+void OnnxMlirModel::ReadConfigFile(char *fileName)
 {
   std::ifstream fp2(fileName);
   if (!fp2.is_open())
@@ -86,13 +86,13 @@ void DLCModel::ReadConfigFile(char *fileName)
   fp2.close();
 }
 
-void DLCModel::AddInferenceData(AbstractCallData *data)
+void OnnxMlirModel::AddInferenceData(AbstractCallData *data)
 {
   std::unique_lock<std::mutex> lock{lock_};
   inference_data.push(data);
 }
 
-bool DLCModel::Ready(int wait, int max_batchsize_)
+bool OnnxMlirModel::Ready(int wait, int max_batchsize_)
 {
   bool check = false;
   int size = 0;
@@ -124,7 +124,7 @@ bool DLCModel::Ready(int wait, int max_batchsize_)
   return check;
 }
 
-void DLCModel::Add_log(LogInfo info, std::function<void(std::string)> log)
+void OnnxMlirModel::Add_log(LogInfo info, std::function<void(std::string)> log)
 {
   std::stringstream log_stream;
   log_stream << std::this_thread::get_id() << "," << info.key << "," << info.inference_size << ",";
@@ -135,7 +135,7 @@ void DLCModel::Add_log(LogInfo info, std::function<void(std::string)> log)
   log_stream.clear();
 }
 
-Task DLCModel::Perpare_and_run(AbstractCallData *data)
+Task OnnxMlirModel::Perpare_and_run(AbstractCallData *data)
 {
 
   return [this, data](std::function<void(std::string)> log)
@@ -144,7 +144,7 @@ Task DLCModel::Perpare_and_run(AbstractCallData *data)
     int64_t rank = curr.shape().size();
     int64_t *shape = curr.mutable_shape()->mutable_data();
     float *x1Data = curr.mutable_data()->mutable_data();
-    // std::cout << "task run1 " << std::endl;
+
     OMTensor *y = loader.RunModel(x1Data, shape, rank, ONNX_TYPE_FLOAT);
     float *prediction = (float *)omTensorGetDataPtr(y);
     int64_t *output_shape = omTensorGetShape(y);
@@ -153,17 +153,15 @@ Task DLCModel::Perpare_and_run(AbstractCallData *data)
     {
       resultsize *= output_shape[i];
     }
-    // std::cout << "task run end " << std::endl;
-    // for (int i = 0 ; i < resultsize; i++){
-    //   std::cout << "task result " <<i << " " <<  prediction[i]<< std::endl;
-    // }
+
     data->sendBack(prediction, resultsize);
-    // std::cout << "task run send " << std::endl;
+
     omTensorDestroy(y);
   };
 }
 
-Task DLCModel::Perpare_and_run(int64_t maxBatchsize)
+
+Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
 {
 
   return [this, maxBatchsize](std::function<void(std::string)> log)
