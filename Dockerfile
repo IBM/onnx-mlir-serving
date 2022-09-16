@@ -8,7 +8,7 @@ RUN cd ${ONNX_MLIR_BUILD_DIR}; make install
 RUN wget -O googletest.tar.gz https://github.com/google/googletest/archive/release-1.11.0.tar.gz
 RUN tar xf googletest.tar.gz;mv googletest-release-1.11.0 googletest;cd googletest;cmake -DBUILD_SHARED_LIBS=ON .;make
 COPY . aigrpc-server
-RUN cd aigrpc-server;mkdir -p cmake/build;cd cmake/build;cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -ONNX_COMPILER_DIR:STRING=${ONNX_MLIR_DIR}  -DCMAKE_PREFIX_PATH=${GPRC_INSTALL_DIR} ../..
+RUN cd aigrpc-server;mkdir -p cmake/build;cd cmake/build;cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_DIR:STRING=${ONNX_MLIR_DIR}  -DCMAKE_PREFIX_PATH=${GPRC_INSTALL_DIR} ../..
 RUN cp -r /workdir/onnx-mlir/include/* /usr/include/
 RUN cd aigrpc-server/cmake/build;make -j8
 RUN cp googletest/lib/* /usr/lib
