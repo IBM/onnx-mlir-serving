@@ -18,7 +18,7 @@
 #include <sstream>
 #include <memory>
 #include <string>
-
+#include <algorithm>
 
 #include "model_loader.h"
 

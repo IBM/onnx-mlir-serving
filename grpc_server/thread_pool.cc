@@ -10,7 +10,7 @@ void AIInfrenceThreadPool::AddTask(Task task)
 void AIInfrenceThreadPool::AddThread(unsigned short size)
 {
   //TODO while 
-  int size = min(pool_.size(), THREADPOOL_MAX_NUM);
+  int size = std::min(pool_.size(), THREADPOOL_MAX_NUM);
   while(size > 0)
   {
     pool_.emplace_back([this](unsigned short cpuindex){ 
