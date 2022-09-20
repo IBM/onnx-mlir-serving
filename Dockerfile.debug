@@ -1,5 +1,5 @@
 FROM onnx/aigrpc-server
 RUN apt-get install -y gdb
-RUN cd aigrpc-server;mkdir -p cmake/debug;cd cmake/debug;cmake -DCMAKE_BUILD_TYPE=Debug -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DLOADGEN_DIR:STRING=~/code/aiu/inference/loadgen -DONNX_COMPILER_BUILD_DIR:STRING=${ONNX_MLIR_BUILD_DIR} -ONNX_COMPILER_DIR:STRING=${ONNX_MLIR_DIR}  -DCMAKE_PREFIX_PATH=${GPRC_INSTALL_DIR} ../..
+RUN cd aigrpc-server;mkdir -p cmake/debug;cd cmake/debug;cmake -DCMAKE_BUILD_TYPE=Debug -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DLOADGEN_DIR:STRING=~/code/aiu/inference/loadgen -DONNX_COMPILER_BUILD_DIR:STRING=${ONNX_MLIR_BUILD_DIR} -DONNX_COMPILER_DIR:STRING=${ONNX_MLIR_DIR}  -DCMAKE_PREFIX_PATH=${GPRC_INSTALL_DIR} ../..
 RUN cd aigrpc-server/cmake/debug; cmake --build .
 RUN cd aigrpc-server/tests; for dir in models/*/; do echo $dir; ls $dir/model.onnx|xargs onnx-mlir; done; cp -r models ../cmake/debug/;
