@@ -7,13 +7,13 @@ void AIInfrenceThreadPool::AddTask(Task task)
   task_cv_.notify_one();
 }
 
-void AIInfrenceThreadPool::AddThread(unsigned short _size)
+void AIInfrenceThreadPool::AddThread(int _size)
 {
 
   int size = std::min(_size, THREADPOOL_MAX_NUM);
   while(size > 0)
   {
-    pool_.emplace_back([this](unsigned short cpuindex){ 
+    pool_.emplace_back([this](int cpuindex){ 
       int cpu = (cpuindex-1) * 12;
       int total_cpu_num = sysconf(_SC_NPROCESSORS_CONF);
       cpu = cpu % total_cpu_num + cpu / total_cpu_num;
