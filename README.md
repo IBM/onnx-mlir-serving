@@ -1,60 +1,69 @@
-grpc source code: /aivol/grpc/
+# ONNX-MLIR Serving
 
-grpc build: /aivol/grpc_install
-## Prerequisite
+This project implements a GRPC server written with C++ to serve onnx-mlir compiled models. Benefiting from C++ implementation, ONNX Serving has very low latency overhead and high throughput. 
 
-GPRC Installed
+ONNX Servring provides dynamic batch aggregation and workers pool feature to fully utilize AI accelerators on the machine.
 
-https://github.com/grpc/grpc/blob/master/BUILDING.md#build-from-source
 
-GPRC Installation DIR example: grpc/cmake/install
+## Setup ONNX-MLIR Serving on local environment
 
-ONNX MLIR Build is built
 
-Pls copy include files from onnx-mlir source to onnx-mlir build dir.
+### **Prerequisite**
+
+
+#### 1. GPRC Installed
+
+[Build GRPC from Source](https://github.com/grpc/grpc/blob/master/BUILDING.md#build-from-source)
+
+**GPRC Installation DIR example**: grpc/cmake/install
+
+
+#### 2. ONNX MLIR Build is built
+
+Copy include files from onnx-mlir source to onnx-mlir build dir.
 
 ```
-ls aiu/onnx-mlir-build/*
-aiu/onnx-mlir-build/include:
+ls onnx-mlir-serving/onnx-mlir-build/*
+onnx-mlir-sering/onnx-mlir-build/include:
 benchmark  CMakeLists.txt  google  onnx  onnx-mlir  OnnxMlirCompiler.h  OnnxMlirRuntime.h  rapidcheck  rapidcheck.h
 
-aiu/onnx-mlir-build/lib:
+onnx-mlir-serving/onnx-mlir-build/lib:
 libcruntime.a
 ```
 
-## Build:
+### **Build ONNX-MLIR Serving**
 
 ```
-cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_BUILD_DIR:STRING${ONNX_MLIR_BUILD_DIR} -DCMAKE_PREFIX_PATH=/aiu/grpc/cmake/install ../..
+cmake -DGRPC_DIR:STRING=${GPRC_SRC_DIR} -DONNX_COMPILER_BUILD_DIR:STRING${ONNX_MLIR_BUILD_DIR} -DCMAKE_PREFIX_PATH=grpc/cmake/install ../..
 make -j
 ```
 
-## run:
+### **Run ONNX-MLIR Server and Client**
 
-server:
+#### Server:
 ```
-./AIU_async_server <wait time ns> <num of thread pool>
+./grpc_server <wait time ns> <num of thread pool>
 ```
-client:
+#### Client:
 ```
-./AIU_async_client <file path> 
+./grpc_client <file path> 
 ```
-baching run:
+#### Baching run:
 ```
-./app <input dir> <1 for grpc call, 0 for local call> <target_qps> <useQueue> <num of thread>
+./grpc_client <input dir> <1 for grpc call, 0 for local call> <target_qps> <useQueue> <num of thread>
 ```
 
-example:
+#### Client Examples:
 1.for accuracy run only (for UT)
 ```
-./app /aivol/inputs/ccf1_inputs 1
+./grpc_client inputs/ccf1_inputs 1
 ```
 2.for batching grpc call
 ```
-./app /aivol/inputs/ccf1_inputs 1 1000 0 1000
+./grpc_client /inputs/ccf1_inputs 1 1000 0 1000
 ```
 
-# Docker-Build
+## Setup ONNX-MLIR Serving on Docker environment
 
 1. Build Base
 ```
@@ -64,3 +73,9 @@ docker build -f Dockerfile.base -t onnx/aigrpc-base .
 ```
 docker build -t onnx/aigrpc-server .
 ```
+
+## Example
+
+See [grpc-test.cc](./tests/grpc-test.cc)
+
+- TEST_F is a simpliest example to serve minst model.
