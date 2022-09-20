@@ -42,25 +42,90 @@ make -j
 
 #### Server:
 ```
-./grpc_server <wait time ns> <num of thread pool>
+./grpc_server -h
+usage: grpc_server [options]
+    -w arg     wait time for batch size, default is 0
+    -b arg     server side batch size, default is 1
+    -n arg     thread numberm default is 1
+
+./grpc_server
 ```
-#### Client:
+### Add more models
 ```
-./grpc_client <file path> 
+/cmake/build
+mkdir models
 ```
-#### Baching run:
+example models directory
 ```
-./grpc_client <input dir> <1 for grpc call, 0 for local call> <target_qps> <useQueue> <num of thread>
+models
+└── mnist
+    ├── config.txt
+    ├── img0.data
+    ├── model.so
+    └── val_map.txt
+```
+
+#### config.txt
+discripte model configs
+```
+<model name>
+<model rank>
+<model shape>
+<batching size or emoty for no baching model>
+<batching dimension index or emoty for no baching model>
+```
+example ccf model
+```
+ccf
+3
+7 1 204
+16
+1
+```
+
+#### img0.data
+binary inference input data. Should already pre-processed. 
+
+#### val_map.txt
+list input files with expected result
+example
+```
+img0.data 1
+```
+
+### Use Batching
+There are two place to input batch size
+1. In model config.txt file 
+2. When start grpc_server -b [batch size]
+
+situation_1: grpc_server without -b, defaule batch size is 1, means no batching 
+situation_2: grpc_server -b <batch_size>, batch_size > 1, and model A config.txt also has batch_size, when query model A, will use the mininum batch size.
+situation_3: grpc_server -b <batch_size>, batch_size > 1, and model B config.txt did not has batch_size, when query model B, will not using batching.
+
+
+### Client:
+```
+./Client <inputs dir> 
+```
+```
+inputs dir
+    ├── config.txt
+    ├── img0.data
+    └── val_map.txt
+```
+#### Benchmark:
+```
+./Benchmark <input dir> <logfile prefix> <num of thread, for test batching>
 ```
 
 #### Client Examples:
 1.for accuracy run only (for UT)
 ```
-./grpc_client inputs/ccf1_inputs 1
+./Client inputs/ccf1_inputs
 ```
-2.for batching grpc call
+2.for batching benchmark call
 ```
-./grpc_client /inputs/ccf1_inputs 1 1000 0 1000
+./Benchmark /inputs/ccf1_inputs ccf 16
 ```
 
 ## Setup ONNX-MLIR Serving on Docker environment
@@ -79,3 +144,4 @@ docker build -t onnx/aigrpc-server .
 See [grpc-test.cc](./tests/grpc-test.cc)
 
 - TEST_F is a simpliest example to serve minst model.
+
