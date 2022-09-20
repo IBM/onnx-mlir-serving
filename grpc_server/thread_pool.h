@@ -56,7 +56,7 @@ class AIInfrenceThreadPool
   int batch_size_ = 1;
 
 public:
-  AIInfrenceThreadPool(unsigned short size)
+  AIInfrenceThreadPool(int size)
   {
     AddThread(size);
   }
@@ -71,7 +71,7 @@ public:
     }
   }
 
-  void AddThread(unsigned short size);
+  void AddThread(int size);
   void AddCallData(AbstractCallData *data);
   void AddTask(Task task);
   void PrintLogs();
