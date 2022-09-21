@@ -44,7 +44,7 @@ make -j
 ```
 ./grpc_server -h
 usage: grpc_server [options]
-    -w arg     wait time for batch, default is 0
+    -w arg     wait time for batch, default is 0ns. if wait time of one batch is expired, the batch will be executed right now.
     -b arg     server side batch size, default is 1
     -n arg     number of inference threads, default is 1. On z16, using 2 * chip number for dedicated lpar configuration got best result. 
 
