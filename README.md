@@ -44,9 +44,9 @@ make -j
 ```
 ./grpc_server -h
 usage: grpc_server [options]
-    -w arg     wait time for batch size, default is 0
+    -w arg     wait time for batch, default is 0
     -b arg     server side batch size, default is 1
-    -n arg     thread numberm default is 1
+    -n arg     number of inference threads, default is 1. On z16, using 2 * chip number for dedicated lpar configuration got best result. 
 
 ./grpc_server
 ```
@@ -71,8 +71,8 @@ discripte model configs
 <model name>
 <model rank>
 <model shape>
-<batching size or emoty for no baching model>
-<batching dimension index or emoty for no baching model>
+<batching size or empty for no baching model>
+<batching dimension index or empty for no baching model>
 ```
 example ccf model
 ```
@@ -82,25 +82,29 @@ ccf
 16
 1
 ```
+The following two files are for performance benchmark tests only.
 
 #### img0.data
-binary inference input data. Should already pre-processed. 
+
+binary inference input data. Should already be pre-processed. 
 
 #### val_map.txt
+
 list input files with expected result
 example
 ```
 img0.data 1
 ```
 
-### Use Batching
-There are two place to input batch size
+### Enable Batching
+
+There are two places to input batch size
 1. In model config.txt file 
 2. When start grpc_server -b [batch size]
 
 situation_1: grpc_server without -b, defaule batch size is 1, means no batching 
-situation_2: grpc_server -b <batch_size>, batch_size > 1, and model A config.txt also has batch_size, when query model A, will use the mininum batch size.
-situation_3: grpc_server -b <batch_size>, batch_size > 1, and model B config.txt did not has batch_size, when query model B, will not using batching.
+situation_2: grpc_server -b <batch_size>, batch_size > 1, and model A config.txt also has batch_size, server will use the mininum batch size.
+situation_3: grpc_server -b <batch_size>, batch_size > 1, and model B config.txt did not has batch_size, server will not use batching.
 
 
 ### Client:
