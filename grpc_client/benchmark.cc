@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
 
 
   const char* host = "localhost:50051";
-  if((host = getenv("AIU_server"))){
+  if((host = getenv("grpc_server"))){
     std::cout << "Using " << host << std::endl;
   }else{
     host = "localhost:50051";

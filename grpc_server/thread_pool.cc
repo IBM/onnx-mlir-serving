@@ -22,7 +22,7 @@ void AIInfrenceThreadPool::AddThread(int _size)
       CPU_ZERO(&mask);
       CPU_SET(*&cpu,&mask);
       char tname[20];
-      sprintf(tname, "AIU t %d", cpu);
+      sprintf(tname, "Inference thread %d", cpu);
       
       prctl(PR_SET_NAME, tname);
       if(sched_setaffinity(0,sizeof(cpu_set_t),&mask)==-1)
