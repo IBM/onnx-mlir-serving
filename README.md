@@ -10,8 +10,8 @@ ONNX-MLIR is compiler technology to transform a valid Open Neural Network Exchan
 ## Build
 
 There are two ways to build this project.
-+ Build ONNX-MLIR Serving on local environment
-+ Build ONNX-MLIR Serving on Docker environment (Recommended)
++ [Build ONNX-MLIR Serving on local environment](#build-onnx-mlir-serving-on-local-environment) 
++ [Build ONNX-MLIR Serving on Docker environment](#build-onnx-mlir-serving-on-docker-environment) (Recommended)
 
 ### Build ONNX-MLIR Serving on local environment
 
