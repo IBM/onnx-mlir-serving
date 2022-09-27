@@ -1,0 +1,5 @@
+FROM onnx/aigrpc-server
+RUN apt-get install -y gdb
+RUN cd aigrpc-server;mkdir -p cmake/debug;cd cmake/debug;cmake -DCMAKE_BUILD_TYPE=Debug ../..
+RUN cd aigrpc-server/cmake/debug; cmake --build .
+RUN cd aigrpc-server/tests; for dir in models/*/; do echo $dir; ls $dir/model.onnx|xargs onnx-mlir; done; cp -r models ../cmake/debug/;

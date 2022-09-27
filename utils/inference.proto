@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package inference;
+
+service InferenceService {
+  rpc Inference (InferenceRequest) returns (InferenceResponse) {};
+  rpc PrintStatistics (PrintStatisticsRequest) returns (PrintStatisticsResponse){};
+}
+message InferenceRequest {
+  repeated int64 shape = 1;
+  bytes data = 2;
+  string model_name = 3;
+}
+message InferenceResponse{
+  repeated float data = 1;
+}
+message inputInfo {
+  repeated int64 shape = 1;
+  bytes data = 2;
+}
+
+message PrintStatisticsRequest {
+
+}
+message PrintStatisticsResponse {
+  
+}
