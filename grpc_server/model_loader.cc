@@ -56,7 +56,7 @@ OnnxMlirModel::OnnxMlirModel(const char *_model_name)
     std::cout << "create failed" << std::endl;
     model_name[0] = 0;
   }
-  char model_config[70];
+  char model_config[75];
   sprintf(model_config, "./models/%s/grpc_config.txt", model_name);
   ReadConfigFile(model_config);
 

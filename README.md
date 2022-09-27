@@ -150,13 +150,13 @@ inputs dir
 ./Benchmark /inputs/ccf1_inputs ccf 16
 ```
 
+The example mnist model input data in generated with little-endian, if server is in s390, need to change to big-endian before sending the gRPC request.
+In the utils/grpc_client.h has the code do the change thing, remove it if your server is in x86.
+
 ## Setup ONNX-MLIR Serving on Docker environment
 
-1. Build Base
-```
-docker build -f Dockerfile.base -t onnx/aigrpc-base .
-```
-2. Build AI GPRC Server and Client
+
+Build AI GPRC Server and Client
 ```
 docker build -t onnx/aigrpc-server .
 ```

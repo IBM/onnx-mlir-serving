@@ -43,8 +43,9 @@ class Dataset {
 
     char buffer[dataTypeSize];
     while(fp.read(buffer, dataTypeSize)){
-      if(BIGENDIAN)
-        std::reverse(buffer, buffer + dataTypeSize);
+      // if(BIGENDIAN)
+      // send request to s390, change to big-endian
+      std::reverse(buffer, buffer + dataTypeSize);
       imageData.insert(imageData.end(), buffer, buffer + dataTypeSize);
     }
 
