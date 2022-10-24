@@ -32,12 +32,12 @@ public:
 
     if (model == NULL)
     {
-      data->sendBack(NULL, 0);
+      data->sendBack();
       return 0;
     }
 
     // no batching, add task to thread pool right now
-    if (model->max_batchsize <= 0 || batch_size_ == 1)
+    if (model->max_batchsize <= 1 || batch_size_ == 1)
     {
       tpool_.AddTask(model->Perpare_and_run(data));
     }

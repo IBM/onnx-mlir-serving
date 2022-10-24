@@ -25,7 +25,7 @@
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
 
-#include "inference.grpc.pb.h"
+#include "utils/inference.grpc.pb.h"
 // #include "onnx.pb.h"
 
 
@@ -79,17 +79,22 @@ public:
 
   void Proceed(void *threadpool);
 
-  InferenceRequest getRequestData()
+  InferenceRequest& getRequestData()
   {
     return request_;
   }
 
-  void sendBack(float *data, int size)
+
+  void sendBack()
   {
-    reply_.mutable_data()->Add(data, data + size);
-    // reply_.set_id(request_.id());
     status_ = FINISH;
     responder_.Finish(reply_, Status::OK, this);
+  }
+
+
+  onnx::TensorProto* AddOutputTensor(){
+    onnx::TensorProto* tensor = reply_.add_tensor();
+    return tensor;
   }
 
 private:
