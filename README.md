@@ -1,24 +1,32 @@
 # ONNX-MLIR Serving
 
-This project implements a GRPC server written with C++ to serve onnx-mlir compiled models. Benefiting from C++ implementation, ONNX Serving has very low latency overhead and high throughput. 
+This project implements a GRPC server written with C++ to serve [onnx-mlir](https://onnx.ai/onnx-mlir/) compiled models. Benefiting from C++ implementation, ONNX Serving has very low latency overhead and high throughput. 
 
 ONNX Servring provides dynamic batch aggregation and workers pool feature to fully utilize AI accelerators on the machine.
 
+## [ONNX-MLIR](https://onnx.ai/onnx-mlir/)
+ONNX-MLIR is compiler technology to transform a valid Open Neural Network Exchange (ONNX) graph into code that implements the graph with minimum runtime support. It implements the ONNX standard and is based on the underlying LLVM/MLIR compiler technology.
 
-## Setup ONNX-MLIR Serving on local environment
+## Build
+
+There are two ways to build this project.
++ [Build ONNX-MLIR Serving on local environment](#build-onnx-mlir-serving-on-local-environment) 
++ [Build ONNX-MLIR Serving on Docker environment](#build-onnx-mlir-serving-on-docker-environment) (Recommended)
+
+### Build ONNX-MLIR Serving on local environment
 
 
-### **Prerequisite**
+#### **Prerequisite**
 
 
-#### 1. GPRC Installed
+##### 1. GPRC Installed
 
 [Build GRPC from Source](https://github.com/grpc/grpc/blob/master/BUILDING.md#build-from-source)
 
 **GPRC Installation DIR example**: grpc/cmake/install
 
 
-#### 2. ONNX MLIR Build is built
+##### 2. ONNX MLIR Build is built
 
 Copy include files from onnx-mlir source to onnx-mlir build dir.
 
@@ -31,16 +39,25 @@ onnx-mlir-serving/onnx-mlir-build/lib:
 libcruntime.a
 ```
 
-### **Build ONNX-MLIR Serving**
+#### **Build ONNX-MLIR Serving**
 
 ```
 cmake -DCMAKE_BUILD_TYPE=Release -DGRPC_DIR:STRING={GPRC_SRC_DIR} -DONNX_COMPILER_DIR:STRING={ONNX_MLIR_BUILD_DIR} -DCMAKE_PREFIX_PATH={GPRC_INSTALL_DIR} ../..
 make -j
 ```
 
-### **Run ONNX-MLIR Server and Client**
+### Build ONNX-MLIR Serving on Docker environment
 
-#### Server:
+
+Build AI GPRC Server and Client
+```
+docker build -t onnx/aigrpc-server .
+```
+
+
+## **Run ONNX-MLIR Server and Client**
+
+### Server:
 ```
 ./grpc_server -h
 usage: grpc_server [options]
@@ -51,6 +68,8 @@ usage: grpc_server [options]
 ./grpc_server
 ```
 ### Add more models
+
+Build Models Directory
 ```
 /cmake/build
 mkdir models
@@ -114,7 +133,7 @@ max_batch_size: 1
 see utils/inference.proto and utils/onnx.proto
 
 
-### Use Batching
+#### Use Batching
 There are two place to input batch size
 1. In model config file 'max_batch_size'
 2. When start grpc_server -b [batch size]
@@ -126,16 +145,9 @@ situation_3: grpc_server -b <batch_size>, batch_size > 1, and model B config max
 
 ### example client:
 ```
-example/cpp or example python
+example/cpp or example/python
 ```
 
-## Setup ONNX-MLIR Serving on Docker environment
-
-
-Build AI GPRC Server and Client
-```
-docker build -t onnx/aigrpc-server .
-```
 
 ## Example
 
