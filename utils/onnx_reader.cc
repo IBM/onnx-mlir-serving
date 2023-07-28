@@ -76,8 +76,11 @@ void createModelConfig(const char* file_path, const char* out_put_file){
 
 int main(int argc, char** argv) {
     std::string input_path = argv[1];
-    std::size_t found = input_path.find_last_of("/\\");
-    std::string output_path = input_path.substr(0,found) + "/config";
+    int found = input_path.find_last_of("/\\");
+    std::string output_path = "config";
+    if(found > 0){
+      output_path = input_path.substr(0,found) + "/config";
+    }
     std::cout << "input path: "  << input_path << '\n';
     std::cout << "output path: " << output_path << '\n';
     createModelConfig(input_path.c_str(), output_path.c_str());

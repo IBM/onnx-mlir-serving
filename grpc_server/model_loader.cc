@@ -171,7 +171,8 @@ OMTensor *OnnxMlirModelLoader::RunModel(void *x1Data, int64_t *shape, int64_t ra
   return y;
 }
 
-OMTensorList *OnnxMlirModelLoader::RunModel(OMTensor **list, int count)
+OMTensorList *OnnxMlirModelLoader::
+RunModel(OMTensor **list, int count)
 {
   OMTensorList *input = dll_omTensorListCreate(list, count);
   OMTensorList *outputList = dll_run_main_graph(input);
@@ -191,8 +192,6 @@ OnnxMlirModel::OnnxMlirModel(const char *_model_name)
     std::cout << "create failed" << std::endl;
     model_name[0] = 0;
   }
-  char model_config[70];
-
 
   char model_onnx[70];
   sprintf(model_onnx, "./models/%s/config", model_name);
@@ -276,11 +275,10 @@ void OnnxMlirModel::ReadConfigFile(char *fileName)
 bool OnnxMlirModel::CheckInputData(AbstractCallData *data){
   bool match = false;
   do{
-    int input_size = data->getRequestData().tensor_size();
+    size_t input_size = data->getRequestData().tensor_size();
     if (inputs.size() != input_size)
       break;
     
-    size_t count = 0;
     for(size_t count= 0; count < input_size; count ++){
 
       const onnx::TensorProto& tensor = data->getRequestData().tensor(count);
@@ -292,7 +290,7 @@ bool OnnxMlirModel::CheckInputData(AbstractCallData *data){
         break;
       }
 
-      size_t data_length = 1;
+      int64_t data_length = 1;
       for(size_t i=0; i<dim_size; i++){
         if (inputs[count].shape[i] != -1 && inputs[count].shape[i] != tensor.dims(i)){
           break;  
@@ -385,7 +383,7 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
 
     Add_log({pnow, now, "wake up", 1}, log);
 
-    int input_size = callData->getRequestData().tensor_size();
+    size_t input_size = callData->getRequestData().tensor_size();
     OMTensor* tensorlist[input_size];
     for(size_t index=0; index < input_size; index++){      
       const onnx::TensorProto& tensor = callData->getRequestData().tensor(index);
@@ -408,7 +406,7 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
       OMTensor* y = omTensorListGetOmtByIndex(yList, index);
       int buffsize = omTensorGetBufferSize(y);
       int rank = omTensorGetRank(y);
-      int64_t *shape = omTensorGetShape(y);
+      const int64_t *shape = omTensorGetShape(y);
       void *prediction = (void*)omTensorGetDataPtr(y);
       OM_DATA_TYPE type = omTensorGetDataType(y);
 
@@ -542,7 +540,8 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
       OMTensor* y = omTensorListGetOmtByIndex(yList, index);
       int buffsize = omTensorGetBufferSize(y);
       int rank = omTensorGetRank(y);
-      int64_t *shape = omTensorGetShape(y);
+      const int64_t *resultShape = omTensorGetShape(y);
+      int64_t shape[omTensorGetRank(y)];
       uint8_t *prediction = (uint8_t*)omTensorGetDataPtr(y);
       OM_DATA_TYPE type = omTensorGetDataType(y);
       int64_t typeSize = getDataTypeSize(type);
@@ -552,11 +551,13 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
       int before = 1;
       for (int64_t i = 0; i < batch_dim; i++)
       {
+        shape[i]=resultShape[i];
         before *= shape[i];
       }
       int after = 1;
       for (int64_t i = batch_dim + 1; i < rank; i++)
       {
+        shape[i]=resultShape[i];
         after *= shape[i];
       }
       shape[batch_dim] =1;
@@ -588,7 +589,8 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
     for(auto x: tensorlist){
       omTensorDestroy(x);
     }
-
+    omTensorListDestroy(yList);
+    
     log(log_stream.str());
   };
 }
