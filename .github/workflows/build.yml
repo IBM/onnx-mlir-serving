@@ -1,0 +1,19 @@
+name: Pull latest Docker Image and Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # Run every day at midnight UTC
+  workflow_dispatch:
+  push:
+jobs:
+  build-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get latest base Docker image 
+        run: docker pull onnxmlirczar/onnx-mlir:latest
+
+      - name: Build
+        run: docker build -t onnxmlirser/aigrpc-server .
