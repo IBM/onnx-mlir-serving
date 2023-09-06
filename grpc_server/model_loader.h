@@ -140,7 +140,7 @@ public:
   }
 
   void Add_log(LogInfo info, std::function<void(std::string)> log);
-  void Add_log_(LogInfo info, std::stringstream& log_stream)
+  void Add_log_(LogInfo info, std::stringstream& log_stream);
 
   Task Perpare_and_run(AbstractCallData *data);
 

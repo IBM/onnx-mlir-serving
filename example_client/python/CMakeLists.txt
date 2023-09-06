@@ -1,8 +1,3 @@
-cmake_minimum_required(VERSION 3.14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -W -Wall -pthread")
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 project(grpc_python_client)
 
 
