@@ -4,13 +4,13 @@
 class OnnxMlirModelManager
 {
 public:
-  OnnxMlirModelManager(int batch_size, int thread_num, int wait_time) : tpool_(thread_num), checkBatchingThread_([this]
-                                                                                                            { checkBatching(); })
+  OnnxMlirModelManager(int batch_size, int thread_num, int wait_time) : 
+    tpool_(thread_num), 
+    checkBatchingThread_([this]{ checkBatching(); })
   {
     batch_size_ = batch_size;
     wait_time_ = wait_time;
   }
-
 
   ~OnnxMlirModelManager()
   {
@@ -20,7 +20,6 @@ public:
       checkBatchingThread_.join();
     }
   }
-
 
   int AddModel(AbstractCallData *data)
   {
@@ -33,14 +32,13 @@ public:
 
     if (model == NULL)
     {
-      data->sendBack(NULL, 0);
+      data->sendBack();
       return 0;
     }
 
     // no batching, add task to thread pool right now
-    if (model->max_batchsize < 0 || batch_size_ == 1)
+    if (model->max_batchsize <= 1 || batch_size_ == 1)
     {
-      std::cout << "task " << std::endl;
       tpool_.AddTask(model->Perpare_and_run(data));
     }
     // else add data to inference queue, wait batching
@@ -51,7 +49,6 @@ public:
 
     return 1;
   }
-
 
   void PrintLogs()
   {

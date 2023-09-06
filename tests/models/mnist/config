@@ -1,0 +1,39 @@
+input {
+  name: "image"
+  type {
+    tensor_type {
+      elem_type: 1
+      shape {
+        dim {
+          dim_value: 1
+        }
+        dim {
+          dim_value: 1
+        }
+        dim {
+          dim_value: 28
+        }
+        dim {
+          dim_value: 28
+        }
+      }
+    }
+  }
+}
+output {
+  name: "prediction"
+  type {
+    tensor_type {
+      elem_type: 1
+      shape {
+        dim {
+          dim_value: 1
+        }
+        dim {
+          dim_value: 10
+        }
+      }
+    }
+  }
+}
+max_batch_size: 5

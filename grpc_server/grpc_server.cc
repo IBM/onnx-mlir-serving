@@ -82,7 +82,7 @@ void ServerImpl::HandleRpcs(int i){
     }  
 }
 
-int printHelp(){
+void printHelp(){
   std::cout << "usage: server [options]" << std::endl;
   std::cout << "-w arg     " << "wait time for batch size" << std::endl;
   std::cout << "-b arg     " << "server side batch size" << std::endl;
@@ -122,9 +122,9 @@ int main(int argc, char** argv) {
     return 0;       
   }
 
-  // std::cout << "wait time " << wait << " ns" << std::endl;
-  // std::cout << "batch max size " << batch_size << std::endl;
-  // std::cout << "thread number " << threadNum << std::endl;
+  std::cout << "wait time " << wait << " ns" << std::endl;
+  std::cout << "batch max size " << batch_size << std::endl;
+  std::cout << "thread number " << threadNum << std::endl;
   ServerImpl server(batch_size, threadNum, wait);
   server.Run();
 

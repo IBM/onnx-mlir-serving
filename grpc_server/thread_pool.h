@@ -22,8 +22,6 @@
 
 #include "model_loader.h"
 
-
-
 using std::atomic;
 using std::condition_variable;
 using std::lock_guard;
@@ -39,7 +37,6 @@ using std::vector;
 
 extern std::chrono::high_resolution_clock::time_point originTime;
 extern OnnxMlirModelLoader modelLoder;
-
 
 class AIInfrenceThreadPool
 {

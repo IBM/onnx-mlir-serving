@@ -1,14 +1,9 @@
 pipeline {
     agent any
     stages {
-        stage('Build Base Image') {
-            steps {
-                sh "docker build -f Dockerfile.base -t onnx/aigrpc-base ."
-            }
-        }
         stage('Build Server Image') {
             steps {
-                sh "docker build -t onnx/aigrpc-server ."
+                sh "docker build -f Dockerfile -t onnx/aigrpc-server ."
             }
         }
         stage('Build Debug Image') {

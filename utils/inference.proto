@@ -2,21 +2,45 @@ syntax = "proto3";
 
 package inference;
 
+import "onnx.proto";
+
 service InferenceService {
   rpc Inference (InferenceRequest) returns (InferenceResponse) {};
   rpc PrintStatistics (PrintStatisticsRequest) returns (PrintStatisticsResponse){};
 }
-message InferenceRequest {
+message InferenceRequest2 {
   repeated int64 shape = 1;
-  repeated float data = 2;
+  bytes data = 2;
   string model_name = 3;
 }
-message InferenceResponse{
+message InferenceResponse2{
   repeated float data = 1;
 }
+message inputInfo {
+  repeated int64 shape = 1;
+  bytes data = 2;
+}
+
 message PrintStatisticsRequest {
 
 }
 message PrintStatisticsResponse {
   
+}
+
+message InferenceRequest {
+  repeated onnx.TensorProto tensor = 1;
+  string model_name = 3;
+}
+
+message InferenceResponse{
+  repeated onnx.TensorProto tensor = 1;
+}
+
+message ModelConfig {
+  repeated onnx.ValueInfoProto input = 1;
+  repeated onnx.ValueInfoProto output = 2;
+  int64 batch_dim = 3;
+  int64 max_batch_size = 4;
+  int64 max_batch_delay_microseconds = 5; 
 }

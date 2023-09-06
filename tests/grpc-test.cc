@@ -13,7 +13,7 @@ class ServerTest : public testing::Test {
     // This is a good place to record the start time.
     void SetUp() override { 
       std::cout << "Start server with simplest way" << std::endl;
-      system("bash -c './grpc_server 0 1 1' &");
+      system("bash -c './grpc_server' &");
       std::this_thread::sleep_for(2s);
       
     }
