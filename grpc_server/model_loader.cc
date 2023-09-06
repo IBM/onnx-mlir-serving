@@ -429,11 +429,9 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
     }
 
     callData->sendBack();
-    std::cout << "sendback" << std::endl;
     for(auto x: tensorlist){
       omTensorDestroy(x);
     }
-    omTensorListDestroy(yList);
 
     high_resolution_clock::time_point now1 = high_resolution_clock::now();
     Add_log_({now, now1, "inference", 1}, log_stream);
@@ -587,7 +585,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
         buildTensorProto(single_result, singleBufferSize, type, tensor);
         tensor->mutable_dims()->Add(shape, shape+rank);
       }
-      // omTensorDestroy(y);
+      omTensorDestroy(y);
     }
 
     for(AbstractCallData* callData: my_queue){
@@ -599,8 +597,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
     for(auto x: tensorlist){
       omTensorDestroy(x);
     }
-    omTensorListDestroy(yList);
-    
+
     log(log_stream.str());
   };
 }
