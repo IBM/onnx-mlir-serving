@@ -10,7 +10,7 @@ project(onnx-mlir-grpc-serving)
 
 
 
-# cmake -DCMAKE_BUILD_TYPE=Release -DONNX_COMPILER_DIR:STRING=/home/ubuntu/onnx-mlir -DCMAKE_PREFIX_PATH=/aivol/grpc_install ..
+# cmake -DCMAKE_BUILD_TYPE=Release -DONNX_COMPILER_DIR:STRING=/aivol/mlperf/AIU_bk/onnx-mlir-build -DCMAKE_PREFIX_PATH=/aivol/grpc_install ..
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()

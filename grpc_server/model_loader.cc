@@ -1,5 +1,79 @@
 #include "model_loader.h"
 
+int check_endianness()
+{
+    union
+    {
+        char c;
+        int i;
+    } u;
+
+    // Assign an int value with a known byte pattern to the union
+    u.i = 0x01020304;
+
+    // Check the value of the char member of the union
+    if (u.c == 0x01)
+    {
+        return 1; // Big-endian
+    }
+
+    if (u.c == 0x04)
+    {
+        return -1; // Little-endian
+    }
+
+    return 0; // Unknown endianness
+}
+
+
+uint64_t swap_uint64(uint64_t n)
+{
+    // Swap lower and upper 32 bits
+    n = ((n & 0x00000000FFFFFFFF) << 32) | ((n & 0xFFFFFFFF00000000) >> 32);
+    // Swap adjacent 16 bits
+    n = ((n & 0x0000FFFF0000FFFF) << 16) | ((n & 0xFFFF0000FFFF0000) >> 16);
+    // Swap adjacent 8 bits
+    n = ((n & 0x00FF00FF00FF00FF) << 8) | ((n & 0xFF00FF00FF00FF00) >> 8);
+    return n;
+}
+
+uint32_t swap_uint32(uint32_t n)
+{
+    // Swap adjacent bytes using bit shifts and masks
+    n = ((n & 0x00FF00FF) << 8) | ((n & 0xFF00FF00) >> 8);
+
+    // Swap non-adjacent bytes using bit shifts and masks
+    n = (n << 16) | (n >> 16);
+    // Return the swapped integer
+    return n;
+}
+
+uint16_t swap_uint16(uint16_t n)
+{
+    // Swap adjacent bytes using bit shifts and masks
+    return (n << 8) | (n >> 8);
+}
+
+
+float swap_float32(float n)
+{
+    // Define a union type that can hold both float32 and int32
+    union
+    {
+        float f;
+        uint32_t i;
+    } u;
+
+    // Assign n to the float member of the union
+    u.f = n;
+
+    // Swap the bytes of the int member of the union
+    u.i = swap_uint32(u.i); // Use the function from previous example
+
+    // Return the float member of the union
+    return u.f;
+}
+
 inline void buildTensorProto(void *prediction,int bufferSize, OM_DATA_TYPE type, onnx::TensorProto* tensor_proto){
 
   int64_t typeSize = getDataTypeSize(type);
@@ -38,17 +112,17 @@ inline void buildTensorProto(void *prediction,int bufferSize, OM_DATA_TYPE type,
       break;
   }
 
-  // float* re = (float*)prediction;
-  // for(int i = 0 ; i<bufferSize/typeSize; i++ ){
-  //   std::cout << re[i] <<std::endl;
-  // }
-
   return;
 }
 
 
 inline int64_t getTensorProtoData(const onnx::TensorProto& tensor){
   int64_t data_size;
+
+  if(tensor.raw_data().size() > 0){
+    int64_t typeSize = getDataTypeSize(ONNX_DATA_TYPE_TO_OM.at(onnx::TensorProto_DataType(tensor.data_type()))); 
+    return tensor.raw_data().size() / typeSize;
+  }
 
   switch(tensor.data_type()){
     case(onnx::TensorProto_DataType_FLOAT):
@@ -90,9 +164,15 @@ inline int64_t getTensorProtoData(const onnx::TensorProto& tensor){
 inline void copyTensorData(const onnx::TensorProto &tensor, void* dst, int64_t index, int64_t length){
 
   void* src;
+  bool fromRaw = false;
   switch(tensor.data_type()){
     case(onnx::TensorProto_DataType_FLOAT):
     case(onnx::TensorProto_DataType_COMPLEX64):
+        if (tensor.float_data_size() == 0)
+        {
+            fromRaw = true;
+            break;
+        }
       src = (void*)(&tensor.float_data().data()[index]);
       break;
     case(onnx::TensorProto_DataType_UINT8):
@@ -102,20 +182,45 @@ inline void copyTensorData(const onnx::TensorProto &tensor, void* dst, int64_t i
     case(onnx::TensorProto_DataType_FLOAT16):
     case(onnx::TensorProto_DataType_INT32):
     case(onnx::TensorProto_DataType_BOOL):
+      if (tensor.int32_data_size() == 0)
+      {
+          fromRaw = true;
+          break;
+      }
       src = (void*)(&tensor.int32_data().data()[index]);
       break;
     case(onnx::TensorProto_DataType_INT64):
+      if (tensor.int64_data_size() == 0)
+      {
+          fromRaw = true;
+          break;
+      }
       src = (void*)(&tensor.int64_data().data()[index]); 
       break;
     case(onnx::TensorProto_DataType_STRING):
+      if (tensor.string_data_size() == 0)
+      {
+          fromRaw = true;
+          break;
+      }
       src =  (void*)(&tensor.string_data().data()[index]); 
       break;
     case(onnx::TensorProto_DataType_DOUBLE):
     case(onnx::TensorProto_DataType_COMPLEX128):
+      if (tensor.double_data_size() == 0)
+      {
+          fromRaw = true;
+          break;
+      }
       src =  (void*)(&tensor.double_data().data()[index]);
       break;
     case(onnx::TensorProto_DataType_UINT32):
     case(onnx::TensorProto_DataType_UINT64):
+      if (tensor.uint64_data_size() == 0)
+      {
+          fromRaw = true;
+          break;
+      }
       src =  (void*)(&tensor.uint64_data().data()[index]); 
       break;
     case(onnx::TensorProto_DataType_BFLOAT16):
@@ -124,7 +229,56 @@ inline void copyTensorData(const onnx::TensorProto &tensor, void* dst, int64_t i
       break;
   }
 
-  memcpy(dst, src, length);
+  if (fromRaw)
+  {
+      src = (void *)(&tensor.raw_data().c_str()[0]);
+      if(check_endianness() == -1){
+        memcpy(dst, src, length);
+        return;
+      }
+      int64_t *dst_64, *src_64;
+      int32_t *dst_32, *src_32;
+      int16_t *dst_16, *src_16;
+      switch (tensor.data_type())
+      {
+      case (onnx::TensorProto_DataType_FLOAT):
+      case(onnx::TensorProto_DataType_COMPLEX64):
+      case (onnx::TensorProto_DataType_INT32):
+          dst_32 = (int32_t *)dst;
+          src_32 = (int32_t *)src;
+          for (int i = 0; i < length / 4; i++)
+          {
+              dst_32[i] = swap_uint32(src_32[i]);
+          }
+          break;
+      case (onnx::TensorProto_DataType_DOUBLE):
+      case (onnx::TensorProto_DataType_COMPLEX128):
+      case (onnx::TensorProto_DataType_INT64):
+          dst_64 = (int64_t *)dst;
+          src_64 = (int64_t *)src;
+          for (int i = 0; i < length / 8; i++)
+          {
+              dst_64[i] = swap_uint64(src_64[i]);
+          }
+          break;
+      case(onnx::TensorProto_DataType_UINT16):
+      case(onnx::TensorProto_DataType_INT16):
+      case(onnx::TensorProto_DataType_FLOAT16):
+          dst_16 = (int16_t *)dst;
+          src_16 = (int16_t *)src;
+          for (int i = 0; i < length / 8; i++)
+          {
+              dst_16[i] = swap_uint16(src_16[i]);
+          }
+          break;
+        default:
+          memcpy(dst, src, length);
+      }
+  }
+  else
+  {
+      memcpy(dst, src, length);
+  }
 }
 
 
@@ -171,7 +325,8 @@ OMTensor *OnnxMlirModelLoader::RunModel(void *x1Data, int64_t *shape, int64_t ra
   return y;
 }
 
-OMTensorList *OnnxMlirModelLoader::RunModel(OMTensor **list, int count)
+OMTensorList *OnnxMlirModelLoader::
+RunModel(OMTensor **list, int count)
 {
   OMTensorList *input = dll_omTensorListCreate(list, count);
   OMTensorList *outputList = dll_run_main_graph(input);
@@ -191,8 +346,6 @@ OnnxMlirModel::OnnxMlirModel(const char *_model_name)
     std::cout << "create failed" << std::endl;
     model_name[0] = 0;
   }
-  char model_config[70];
-
 
   char model_onnx[70];
   sprintf(model_onnx, "./models/%s/config", model_name);
@@ -279,8 +432,6 @@ bool OnnxMlirModel::CheckInputData(AbstractCallData *data){
     int input_size = data->getRequestData().tensor_size();
     if (inputs.size() != input_size)
       break;
-    
-    size_t count = 0;
     for(size_t count= 0; count < input_size; count ++){
 
       const onnx::TensorProto& tensor = data->getRequestData().tensor(count);
@@ -292,7 +443,7 @@ bool OnnxMlirModel::CheckInputData(AbstractCallData *data){
         break;
       }
 
-      size_t data_length = 1;
+      int64_t data_length = 1;
       for(size_t i=0; i<dim_size; i++){
         if (inputs[count].shape[i] != -1 && inputs[count].shape[i] != tensor.dims(i)){
           break;  
@@ -302,10 +453,8 @@ bool OnnxMlirModel::CheckInputData(AbstractCallData *data){
 
 
       int64_t data_size = getTensorProtoData(tensor);
-
       if(data_size!=data_length)
         break;
-
     }
     match = true;
   }while(false);
@@ -356,18 +505,8 @@ bool OnnxMlirModel::Ready(int wait, int max_batchsize_)
   return check;
 }
 
-void OnnxMlirModel::Add_log(LogInfo info, std::function<void(std::string)> log)
-{
-  std::stringstream log_stream;
-  log_stream << std::this_thread::get_id() << "," << info.key << "," << info.inference_size << ",";
-  log_stream << Calulate_duration(info.end, info.start) << ",";
-  log_stream << Calulate_duration(info.start, originTime) << ",";
-  log_stream << Calulate_duration(info.end, originTime) << std::endl;
-  log(log_stream.str());
-  log_stream.clear();
-}
 
-void OnnxMlirModel::Add_log_(LogInfo info, std::stringstream& log_stream)
+void OnnxMlirModel::Add_log(LogInfo info, std::stringstream& log_stream)
 {
 
   log_stream << std::this_thread::get_id() << "," << info.key << "," << info.inference_size << ",";
@@ -389,15 +528,17 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
 
   return [this, callData](std::function<void(std::string)> log)
   {
+
     std::stringstream log_stream;
     high_resolution_clock::time_point pnow = callData->now;
     high_resolution_clock::time_point now = high_resolution_clock::now();
 
-    Add_log_({pnow, now, "wake up", 1}, log_stream);
+    Add_log({pnow, now, "wake up", 1}, log_stream);
 
-    int input_size = callData->getRequestData().tensor_size();
+    size_t input_size = callData->getRequestData().tensor_size();
     OMTensor* tensorlist[input_size];
-    for(size_t index=0; index < input_size; index++){      
+    for(size_t index=0; index < input_size; index++){     
+      
       const onnx::TensorProto& tensor = callData->getRequestData().tensor(index);
       int64_t rank = tensor.dims_size(); 
       const int64_t *shape = tensor.dims().data(); 
@@ -405,10 +546,10 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
       OMTensor *omTensor = omTensorCreateEmpty(const_cast<int64_t*>(shape), rank, type);
       void *data = omTensorGetDataPtr(omTensor);
       int64_t buffsize = omTensorGetBufferSize(omTensor);
-
       copyTensorData(tensor, data, 0, buffsize);
       tensorlist[index] = omTensor;
     }
+    
 
     OMTensorList *yList = loader.RunModel(tensorlist,input_size);
     int result_size = omTensorListGetSize(yList);
@@ -429,12 +570,13 @@ Task OnnxMlirModel::Perpare_and_run(AbstractCallData *callData)
     }
 
     callData->sendBack();
+
     for(auto x: tensorlist){
       omTensorDestroy(x);
     }
 
     high_resolution_clock::time_point now1 = high_resolution_clock::now();
-    Add_log_({now, now1, "inference", 1}, log_stream);
+    Add_log({now, now1, "inference", 1}, log_stream);
   };
 }
 
@@ -445,6 +587,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
   return [this, maxBatchsize](std::function<void(std::string)> log)
   {
     int count = 0;
+    
     std::vector<AbstractCallData *> my_queue;
     {
       std::unique_lock<std::mutex> lock{lock_};
@@ -470,7 +613,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
     high_resolution_clock::time_point pnow = my_queue[0]->now;
     high_resolution_clock::time_point now = high_resolution_clock::now();
 
-    Add_log_({pnow, now, "wake up", batchsize}, log_stream);
+    Add_log({pnow, now, "wake up", batchsize}, log_stream);
 
     pnow = high_resolution_clock::now();
 
@@ -536,7 +679,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
     
 
     now = high_resolution_clock::now();
-    Add_log_({pnow, now, "merge", batchsize}, log_stream);
+    Add_log({pnow, now, "merge", batchsize}, log_stream);
     OMTensorList *yList = loader.RunModel(tensorlist,input_size);
     int result_size = omTensorListGetSize(yList);
     for(size_t index = 0; index< result_size; index++){
@@ -596,7 +739,7 @@ Task OnnxMlirModel::Perpare_and_run(int64_t maxBatchsize)
     }
 
     now = high_resolution_clock::now();
-    Add_log_({pnow, now, "inference", batchsize}, log_stream);
+    Add_log({pnow, now, "inference", batchsize}, log_stream);
     for(auto x: tensorlist){
       omTensorDestroy(x);
     }

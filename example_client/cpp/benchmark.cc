@@ -1,6 +1,6 @@
 #include <unordered_map>
 
-#include "prepare_and_send.h"
+#include "grpc_client.h"
 
 
 class MultiClientSimlate{
@@ -97,7 +97,7 @@ class MultiClientSimlate{
             if(isRun){
               Timer t;
               t.start = high_resolution_clock::now();
-              std::vector<float> out = client.Inference(ds.getImageData(index), ds.shape, ds.rank, ds.modelName);
+              std::vector<float> out = client.Inference(ds.getInput(index));
               t.end = high_resolution_clock::now();
               resultMap.emplace(index,out);
               if(isStartRecord && !isEndRecord){
@@ -157,7 +157,7 @@ class MultiClientSimlate{
 
     double meanLatency(){
       double sum = std::accumulate(latencys.begin(), latencys.end(), 0.0);
-      std::cout << sum << " " << latencys.size() << std::endl;
+      // std::cout << sum << " " << latencys.size() << std::endl;
       double mean = sum / latencys.size();
 
       std::cout << "total time: " << _actuTime << std::endl;
@@ -183,32 +183,27 @@ class MultiClientSimlate{
     }
 };
 
-// ./Benchmark /aivol/inputs/ccf1_inputs 1 1
+// ./Benchmark ccf1 /aivol/inputs/ccf1_inputs 1
+// ./Benchmark model_name inputs threadNum 
 int main(int argc, char** argv) {
 
-  Dataset ds(argv[1]);
+  Dataset ds(argv[2], argv[1]);
   int threadNum = 64;
-  char* logPrefix = "out1";
-  if(argc > 2){
-    logPrefix = argv[2];
-  }
+  char* logPrefix = argv[1];
 
   if(argc > 3){
     threadNum = std::stoi(argv[3]);
   }
 
-
   char* host = "localhost:50051";
-  if((host = getenv("grpc_server"))){
+  if((host = getenv("grpc_server")))
     std::cout << "Using " << host << std::endl;
-  }else{
-    host = "localhost:50051";
+  else
     std::cout << "Using " << host << std::endl;
-  }
 
-  std::cout << threadNum << std::endl; 
+
+  std::cout << "number of threads: " << threadNum << std::endl; 
   MultiClientSimlate s(host, ds, threadNum, 0, 60, 60, logPrefix);
-
 
   InferenceClient* client = new InferenceClient(grpc::CreateChannel(host, grpc::InsecureChannelCredentials()));
   client->printStatistics();

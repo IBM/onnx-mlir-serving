@@ -2,6 +2,7 @@ FROM ubuntu:22.04
 
 COPY --from=onnxmlirczar/onnx-mlir:latest /usr/local/bin/ /usr/local/bin/
 COPY --from=onnxmlirczar/onnx-mlir:latest /usr/local/lib/ /usr/local/lib/
+COPY --from=onnxmlirczar/onnx-mlir:latest /usr/local/lib64/ /usr/local/lib64/
 COPY --from=onnxmlirczar/onnx-mlir:latest /usr/local/include/ /usr/local/include/
 
 RUN apt-get update \
