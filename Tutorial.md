@@ -104,13 +104,13 @@ This tutorial demonstrates how to perform inference on the MNIST model using the
 
 ### Step 6: Send Inference Request with a Client
 
-1. Start an INFER-type client to send a request for inference on the MNIST model. Use the provided C++ client example `Client` with the following command:
+1. Start an client to send inference request for inference on the MNIST model. Use the provided C++ client example `Client` with the following command:
    
    ```shell
    container# cd /workdir/onnx-mlir-serving/cmake/build/cpp
-   container# ./Client /workdir/onnx-mlir-serving/tests/models/mnist/
+   container# ./Client /workdir/mnist-12 mnist
    ```
-   
+
    The output will be an array representing the possibilities of each digit (0-9) based on the input. The inference result will be the digit with the highest possibility.
 
    Example output:
@@ -132,71 +132,30 @@ This tutorial demonstrates how to perform inference on the MNIST model using the
    In this example, the highest possibility is 75.25 for the 5th number (digit 4), indicating that digit 4 is the predicted result.
 
 Note: Please make sure to adjust the paths and commands as necessary based on your specific setup and environment.
+   
+   This program sends first record of mnist dataset (input*.pb) to get the inference result.
+
+   If you like, you can update example client code to read other datasets or your own record.
 
 #### Client Example Code
 
-The client example code is located in the `/workdir/onnx-mlir-serving/example_client/cpp` directory. It reads a dataset from the `/workdir/onnx-mlir-serving/tests/models/mnist/` directory and uses the first image in the dataset to build the inference request.
+```C
+#include "grpc_client.h"
 
-The inference request is sent using the method `client.Inference(ds.getImageData(0), ds.shape, ds.rank, ds.modelName)`. If you would like to try other records in this dataset, you can update this C++ file accordingly.
-
-```C++
-#include "prepare_and_send.h"
-
-// Main function
-// Parameters:
-// - argc: Number of command-line arguments
-// - argv: Array of command-line arguments
+// ./main <path include test_data_set_*> <model_name>
 int main(int argc, char** argv) {
 
-  // Create a Dataset object using the provided dataset path
-  Dataset ds(argv[1]);
-
-  // Set the gRPC server address
+  Dataset ds(argv[1], argv[2]);
   const char* address = "localhost:50051";
-  if (argc > 2)
-    address = argv[2];
-
-  // Create an InferenceClient object using the gRPC server address
+  if(argc > 3)
+    address = argv[3];
   InferenceClient client(grpc::CreateChannel(address, grpc::InsecureChannelCredentials()));
-
-  // Perform inference on the first image from the dataset using the InferenceClient
-  std::vector<float> out = client.Inference(ds.getImageData(0), ds.shape, ds.rank, ds.modelName);
-
-  // Print the size of the resulting vector
+  // ds.getInput(0) just get first record only.
+  std::vector<float> out = client.Inference(ds.getInput(0));
   std::cout << "result size: " << out.size() << std::endl;
-
-  // Print each element in the resulting vector
-  for (size_t i = 0; i < out.size(); i++)
+  for(size_t i = 0; i< out.size(); i++)
     std::cout << out[i] << std::endl;
 
   return 0;
 }
 ```
-
-#### Dataset Structure
-
-The dataset consists of several files:
-
-+ img*.data: These are data files. Each file contains a record.
-+ grpc_config.txt: This file contains the descriptor for the data files.
-+ val_map.txt: This file lists the data files.
-
-The example client code in `prepare_send.h` reads `val_map.txt` to get the list of data files.
-
-**val_map.txt**: This file contains information about the data files. In this case, there is one data file and four records in that file.
-```
-img0.data 4
-```
-
-**img0.data** is 3136 bytes in size and there are 4 records in it. Each MNIST input record has a shape of 1128*28, which corresponds to 784 bytes. Data file is generate from /workdir/mnist-12/test_data_set_0/input_0.pb. If you would like to generate the data file for other model, pls refer to [Model Zoo Test Data Usage](https://github.com/onnx/models#usage-) or contact us. 
-
-**grpc_config.txt**: The client example read `grpc_config`` to know how to use data file.
-
-```
-mnist  -> model name
-f 4    -> typeName float, dataTypeSize 4
-4      -> rank 4, there are 4 dimensions
-1 1 28 28   -> size of each dimension
-```
-
-
