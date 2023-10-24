@@ -10,7 +10,7 @@ This tutorial demonstrates how to perform inference on the MNIST model using the
    
    ```shell
    cd onnx-mlir-serving
-   sudo docker build -t onnx/aigrpc-server .
+   sudo docker build -t onnx/onnx-mlir-server .
    ```
 
 ### Step 2: Obtain the MNIST ONNX Model
@@ -25,11 +25,11 @@ This tutorial demonstrates how to perform inference on the MNIST model using the
 
 ### Step 3: Compile the ONNX Model with ONNX-MLIR
 
-1. Start a Docker container using the `onnx/aigrpc-server` image. Use the following command to run the container and open a shell inside it:
+1. Start a Docker container using the `onnx/onnx-mlir-server` image. Use the following command to run the container and open a shell inside it:
    (The prompt "container#" denotes the shell inside the container)
    
    ```shell
-   sudo docker run -it --name serving onnx/aigrpc-server
+   sudo docker run -it --name serving onnx/onnx-mlir-server
    Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.
    container#
    ```
